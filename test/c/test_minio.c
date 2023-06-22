@@ -90,7 +90,7 @@ verify_integrity(char *filepath, uint8_t *data, size_t size)
     /* Check each byte matches. */
     for (size_t i = 0; i < size; i++) {
         if (data[i] != baseline[i]) {
-            printf("byte offset %ld is incorrect (data = %hu, truth = %hu)\n",
+            printf("byte offset %ld is incorrect (data = 0x%hx, truth = 0x%hx)\n",
                    i,
                    data[i],
                    baseline[i]);

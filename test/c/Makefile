@@ -2,8 +2,8 @@
 
 CC     = gcc
 CFLAGS = -I -Wall
-DEPS   = ../minio/minio.h
-OBJ    = test-minio.o ../minio/minio.o
+DEPS   = ../../csrc/minio/minio.h
+OBJ    = test_minio.o ../../csrc/minio/minio.o
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
@@ -12,4 +12,4 @@ test: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f test test-minio.o ../minio/minio.o
+	rm -f test test-minio.o ../../csrc/minio/minio.o

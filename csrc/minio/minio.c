@@ -82,6 +82,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       if (entry->size > max_size) {
          return -EINVAL;
       }
+      printf("entry exists...\ndata: %p\nptr : %p\nsize: 0x%.012lx (%lu)", data, entry->ptr, entry->size, entry->size);
       memcpy(data, entry->ptr, entry->size);
 
       return entry->size;
@@ -92,25 +93,17 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    if (fd < 0) {
       return -ENOENT;
    }
-   FILE *file = fdopen(fd, "r");
-   if (file == NULL) {
-      close(fd);
-      return -EBADFD;
-   }
 
    /* Ensure the size of the file is OK. */
-   fseek(file, 0L, SEEK_END);
-   size_t size = ftell(file);
+   size_t size = lseek(fd, 0L, SEEK_END);
    if (size > max_size) {
-      fclose(file);
       close(fd);
       return -EINVAL;
    }
-   rewind(file);
+   lseek(fd, 0L, SEEK_SET);
 
    /* Read into data and cache the data if it'll fit. */
    read(fd, data, size);
-   fclose(file);
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Make an entry. */
