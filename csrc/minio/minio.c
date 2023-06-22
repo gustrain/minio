@@ -87,12 +87,10 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       if (entry->size > max_size) {
          return -EINVAL;
       }
-      printf("entry exists...\ndata: %p\nptr : %p\nsize: 0x%.012lx (%lu)\n", data, entry->ptr, entry->size, entry->size);
       memcpy(data, entry->ptr, entry->size);
 
       return entry->size;
    }
-   printf("entry does NOT exist\n");
 
    /* Open the file in DIRECT mode. */
    int fd = open(filepath, O_RDONLY | __O_DIRECT);
