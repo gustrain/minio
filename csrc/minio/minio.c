@@ -82,7 +82,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       if (entry->size > max_size) {
          return -EINVAL;
       }
-      printf("entry exists...\ndata: %p\nptr : %p\nsize: 0x%.012lx (%lu)", data, entry->ptr, entry->size, entry->size);
+      printf("entry exists...\ndata: %p\nptr : %p\nsize: 0x%.012lx (%lu)\n", data, entry->ptr, entry->size, entry->size);
       memcpy(data, entry->ptr, entry->size);
 
       return entry->size;
