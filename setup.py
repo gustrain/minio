@@ -1,10 +1,23 @@
 from distutils.core import setup, Extension
 
-setup(name = 'MinIO',
-      version = '1.0',
-      description = 'Python MinIO file cache module.',
+MAJOR = 0
+MINOR = 0
+MICRO = 0
+VERSION = '{}.{}.{}'.format(MAJOR, MINOR, MICRO)
+
+with open('README.md', 'r') as f:
+    long_description = f.read()
+
+setup(name = 'MinIO Cache',
+      version = VERSION,
+      description = 'MinIO file cache module',
+      long_description = long_description,
+      long_description_content_type = 'text/markdown',
+      url = 'https://test.pypi.org/project/MinIO-Cache',
+      platforms = "any",
       author = 'Gus Waldspurger',
       author_email = 'gus@waldspurger.com',
+      license = 'MIT',
       ext_modules = [
             Extension('minio', sources = ['csrc/miniomodule/miniomodule.c',
                                           'csrc/minio/minio.c'])
