@@ -74,7 +74,7 @@ test_timing(size_t cache_size,
     /* Check timing. */
     for (int i = 0; i < n_files; i++) {
         double speedup = (1e-9 * times_cold[i]) / (1e-9 * times_hot[i]);
-        printf("Speedup for item %d is %.02lfx (cached? %d).\n", i, speedup, should_cache);
+        printf("Speedup for item %d is %.02lfx (cached? %d).\n", i, speedup, should_cache[i]);
     }
 
     free(data);
