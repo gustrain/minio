@@ -21,6 +21,8 @@
    SOFTWARE.
    */
 
+#define _GNU_SOURCE
+
 #include "minio.h"
 
 #include <string.h>
@@ -71,10 +73,15 @@ static policy_func_t *policy_table[N_POLICIES] = {
 
 /* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
    filesystem at FILEPATH. On failure returns ERRNO code with negative value,
-   otherwise returns bytes read on success. */
+   otherwise returns bytes read on success.
+   
+   DATA must be 8-byte aligned, in order for direct IO to work properly. */
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
+   /* DATA must be 8-byte aligned. */
+   assert((((uintptr_t) data) & 0x07) == 0);
+
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, filepath, entry);
@@ -101,6 +108,8 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    if (size > max_size) {
       close(fd);
       return -EINVAL;
+   } else if (size == 0) {
+      close(fd);
    }
    lseek(fd, 0L, SEEK_SET);
 
@@ -153,9 +162,11 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
 
    printf("about to allocate memory.\n");
 
-   /* Allocate the cache's memory. */
-   if ((cache->data = malloc(size)) == NULL) {
-      return -ENOMEM;
+   /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
+      IO will work properly. */
+   int ret = posix_memalign((void **) &cache->data, 8, size);
+   if (ret != 0) {
+      return ret;
    }
 
    printf("successfully allocated memory.\n");
