@@ -166,13 +166,13 @@ main(int argc, char **argv)
     /* Integrity tests. */
     printf("testing integrity...\n");
     size_t integrity_configs[7] = {
-        0,
         32 * MB,
         16 * MB,
         8 * MB,
         4 * MB,
         2 * MB,
         1 * MB,
+        0,
     };
     for (int i = 0; i < 7; i++) {
         printf("\t%ld KB cache...", integrity_configs[i] / KB);
