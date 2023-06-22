@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 #define KB (1024)
 #define MB (KB * KB)
@@ -168,7 +169,7 @@ main(int argc, char **argv)
     printf("testing directio...\n");
     int fd_direct = open("test_minio.c", O_RDONLY | __O_DIRECT);
     int fd_normal = open("test_minio.c", O_RDONLY);
-    printf("direct bytes: %ld\n", read(fd_direct, foo, 32 * 1024 * 1024));
+    printf("direct bytes: %ld, errno = %d\n", read(fd_direct, foo, 32 * 1024 * 1024), errno);
     printf("normal bytes: %ld\n", read(fd_normal, bar, 32 * 1024 * 1024));
     for (int i = 0; i < 32 * 1024 * 1024; i++) {
         assert(foo[i] == bar[i]);
