@@ -171,6 +171,7 @@ main(int argc, char **argv)
     int fd_normal = open("test_minio.c", O_RDONLY);
     printf("direct bytes: %ld\n", read(fd_direct, foo, 32 * 1024 * 1024));
     printf("errno: %d\n", errno);
+    printf("data addr: %p\n", foo);
     printf("normal bytes: %ld\n", read(fd_normal, bar, 32 * 1024 * 1024));
     for (int i = 0; i < 32 * 1024 * 1024; i++) {
         assert(foo[i] == bar[i]);
