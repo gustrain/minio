@@ -151,6 +151,18 @@ main(int argc, char **argv)
         false
     };
 
+    /* Check that memcpy workers. */
+    uint8_t *foo, *bar;
+    printf("testing memcpy...\n");
+    assert((foo = malloc(32 * 1024 * 1024)) != NULL);
+    assert((bar = malloc(32 * 1024 * 1024)) != NULL);
+
+    memset(foo, 0x42, 32 * 1024 * 1024);
+    memcpy(bar, foo, 32 * 1024 * 1024);
+    for (int i = 0; i < 32 * 1024 * 1024; i++) {
+        assert(foo[i] == bar[i]);
+    }
+
     /* Timing tests. */
     printf("testing timing...\n");
     test_timing(8 * MB, 32 * MB, test_files, should_cache, N_TEST_FILES);
