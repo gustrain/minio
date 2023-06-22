@@ -75,13 +75,10 @@ static policy_func_t *policy_table[N_POLICIES] = {
    filesystem at FILEPATH. On failure returns ERRNO code with negative value,
    otherwise returns bytes read on success.
    
-   DATA must be 8-byte aligned, in order for direct IO to work properly. */
+   DATA must be block-aligned, in order for direct IO to work properly. */
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
-   /* DATA must be 8-byte aligned. */
-   assert((((uintptr_t) data) & 0x07) == 0);
-
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, filepath, entry);
@@ -113,8 +110,9 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    }
    lseek(fd, 0L, SEEK_SET);
 
-   /* Read into data and cache the data if it'll fit. */
-   read(fd, data, size);
+   /* Read into data and cache the data if it'll fit. Ensure __nbytes is a
+      multiple of 4k for direct IO. */
+   read(fd, data, (size | 0xFFF) + 1);
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Make an entry. */
@@ -150,8 +148,6 @@ cache_flush(cache_t *cache)
 int
 cache_init(cache_t *cache, size_t size, policy_t policy)
 {
-   printf("initializing cache; size = %lu.\n", size);
-
    /* Cache configuration. */
    cache->size = size;
    cache->used = 0;
@@ -160,25 +156,16 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    /* Initialize the hash table. */
    cache->ht = NULL;
 
-   printf("about to allocate memory.\n");
-
    /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
       IO will work properly. */
    if ((cache->data = malloc(size)) == NULL) {
       return -ENOMEM;
    }
 
-   printf("successfully allocated memory.\n");
-   printf("about to page-lock memory.\n");
-
    /* Pin the cache's memory. */
    if (mlock(cache->data, size) != 0) {
       return -EPERM;
    }
-
-   printf("successfully page-locked memory.\n");
-
-   printf("successfully initialized cache.\n");
 
    return 0;
 }
