@@ -74,12 +74,7 @@ test_timing(size_t cache_size,
     /* Check timing. */
     for (int i = 0; i < n_files; i++) {
         double speedup = (1e-9 * times_cold[i]) / (1e-9 * times_hot[i]);
-        printf("Speedup for item %d is %.02lfx.\n", i, speedup);
-        // if (should_cache[i]) {
-        //     assert(speedup >= SPEEDUP_METRIC);
-        // } else {
-        //     assert(speedup < SPEEDUP_METRIC);
-        // }
+        printf("Speedup for item %d is %.02lfx (cached? %d).\n", i, speedup, should_cache);
     }
 
     free(data);
@@ -163,40 +158,6 @@ main(int argc, char **argv)
         true,
         false
     };
-
-    #define MYSIZE (32 * 1024 * 1024)
-    #define MYFILE "test_minio.c"
-
-    uint8_t *foo, *bar;
-    assert(posix_memalign((void **) &foo, BLOCK_SIZE, MYSIZE) == 0);
-    assert(posix_memalign((void **) &bar, BLOCK_SIZE, MYSIZE) == 0);
-
-    /* Check that memcpy works. */
-    printf("testing memcpy...\n");
-    memset(foo, 0x42, MYSIZE);
-    memcpy(bar, foo, MYSIZE);
-    for (int i = 0; i < MYSIZE; i++) {
-        assert(foo[i] == bar[i]);
-    }
-
-
-    /* Check that direct read works. */
-    printf("testing directio...\n");
-    int fd_direct = open(MYFILE, O_RDONLY | __O_DIRECT);
-    printf("fd: %d\n", fd_direct);
-
-    int fd_normal = open(MYFILE, O_RDONLY);
-    printf("starting offset: %ld\n", lseek(fd_direct, 0, SEEK_CUR));
-
-    printf("direct bytes: %ld\n", read(fd_direct, foo, MYSIZE));
-    
-    printf("errno: %d, (%s)\n", errno, strerror(errno));
-    printf("data addr: %p\n", foo);
-    printf("ending offset: %ld\n", lseek(fd_direct, 0, SEEK_CUR));
-    printf("normal bytes: %ld\n", read(fd_normal, bar, MYSIZE));
-    for (int i = 0; i < lseek(fd_direct, 0, SEEK_CUR); i++) {
-        assert(foo[i] == bar[i]);
-    }
 
     /* Timing tests. */
     printf("testing timing...\n");
