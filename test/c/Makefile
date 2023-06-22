@@ -1,7 +1,7 @@
 # https://www.cs.colby.edu/maxwell/courses/tutorials/maketutor/
 
 CC     = gcc
-CFLAGS = -I -Wall
+CFLAGS = -Wall
 DEPS   = ../../csrc/minio/minio.h
 OBJ    = test_minio.o ../../csrc/minio/minio.o
 
