@@ -1,0 +1,7 @@
+setup.py
+MinIO.egg-info/PKG-INFO
+MinIO.egg-info/SOURCES.txt
+MinIO.egg-info/dependency_links.txt
+MinIO.egg-info/top_level.txt
+csrc/minio/minio.c
+csrc/miniomodule/miniomodule.c
