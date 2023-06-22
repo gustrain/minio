@@ -9,6 +9,8 @@
 #include <time.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define KB (1024)
 #define MB (KB * KB)
@@ -84,8 +86,8 @@ verify_integrity(char *filepath, uint8_t *data, size_t size)
     /* Read a fresh copy of the data from storage. */
     uint8_t *baseline = malloc(size);
     assert(baseline != NULL);
-    FILE *file = fopen(filepath, "r");
-    fread(baseline, size, 1, file);
+    int fd = open(filepath, O_RDONLY);
+    read(fd, baseline, size);
 
     /* Check each byte matches. */
     for (size_t i = 0; i < size; i++) {
