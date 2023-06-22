@@ -25,6 +25,9 @@
 #include <Python.h>
 
 #include "../minio/minio.h"
+#include "stdlib.h"
+
+#define BLOCK_SIZE (4096)
 
 
 /* Python wrapper for cache_t type. */
@@ -67,7 +70,7 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
 
     /* Set up the copy area. */
     cache->max_file_size = max_file_size;
-    if ((cache->temp = malloc(max_file_size)) == NULL) {
+    if (posix_memalign(&cache->temp, BLOCK_SIZE, max_file_size) != 0) {
         PyErr_SetString(PyExc_MemoryError, "couldn't allocate temp area");
         PyErr_NoMemory();
         return -1;
