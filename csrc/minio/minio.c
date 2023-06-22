@@ -164,9 +164,8 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
 
    /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
       IO will work properly. */
-   int ret = posix_memalign((void **) &cache->data, 8, size);
-   if (ret != 0) {
-      return ret;
+   if ((cache->data = malloc(size)) == NULL) {
+      return -ENOMEM;
    }
 
    printf("successfully allocated memory.\n");
