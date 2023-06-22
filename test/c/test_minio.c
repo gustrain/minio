@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 
 #define KB (1024)
 #define MB (KB * KB)
@@ -164,6 +165,7 @@ main(int argc, char **argv)
     }
 
     /* Check that direct read works. */
+    printf("testing directio...\n");
     int fd_direct = open("test_minio.c", O_RDONLY | __O_DIRECT);
     int fd_normal = open("test_minio.c", O_RDONLY);
     printf("direct bytes: %ld", read(fd_direct, foo, 32 * 1024 * 1024));
