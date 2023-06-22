@@ -168,9 +168,13 @@ main(int argc, char **argv)
     /* Check that direct read works. */
     printf("testing directio...\n");
     int fd_direct = open("test_minio.c", O_RDONLY | __O_DIRECT);
+    printf("fd: %d\n", fd_direct);
+
     int fd_normal = open("test_minio.c", O_RDONLY);
     printf("starting offset: %ld\n", lseek(fd_direct, 0, SEEK_CUR));
+
     printf("direct bytes: %ld\n", read(fd_direct, foo, 32 * 1024 * 1024));
+
     printf("errno: %d, (%s)\n", errno, strerror(errno));
     printf("data addr: %p\n", foo);
     printf("ending offset: %ld\n", lseek(fd_direct, 0, SEEK_CUR));
