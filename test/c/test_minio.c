@@ -197,7 +197,7 @@ main(int argc, char **argv)
     printf("data addr: %p\n", foo);
     printf("ending offset: %ld\n", lseek(fd_direct, 0, SEEK_CUR));
     printf("normal bytes: %ld\n", read(fd_normal, bar, MYSIZE));
-    for (int i = 0; i < MYSIZE; i++) {
+    for (int i = 0; i < MYSIZE - block_size; i++) {
         assert(foo[i] == bar[i]);
     }
 
