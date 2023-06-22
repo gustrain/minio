@@ -146,6 +146,8 @@ cache_flush(cache_t *cache)
 int
 cache_init(cache_t *cache, size_t size, policy_t policy)
 {
+   printf("initializing cache; size = %lu.\n", size);
+
    /* Cache configuration. */
    cache->size = size;
    cache->used = 0;
@@ -154,15 +156,24 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    /* Initialize the hash table. */
    cache->ht = NULL;
 
+   printf("about to allocate memory.\n");
+
    /* Allocate the cache's memory. */
    if ((cache->data = malloc(size)) == NULL) {
       return -ENOMEM;
    }
 
+   printf("successfully allocated memory.\n");
+   printf("about to page-lock memory.\n");
+
    /* Pin the cache's memory. */
    if (mlock(cache->data, size) != 0) {
       return -EPERM;
    }
+
+   printf("successfully page-locked memory.\n");
+
+   printf("successfully initialized cache.\n");
 
    return 0;
 }
