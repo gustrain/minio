@@ -21,8 +21,11 @@
    SOFTWARE.
    */
 
+#define _GNU_SOURCE
+
 #include "minio.h"
 
+#include <string.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -70,7 +73,9 @@ static policy_func_t *policy_table[N_POLICIES] = {
 
 /* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
    filesystem at FILEPATH. On failure returns ERRNO code with negative value,
-   otherwise returns bytes read on success. */
+   otherwise returns bytes read on success.
+   
+   DATA must be block-aligned, in order for direct IO to work properly. */
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
@@ -92,25 +97,20 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    if (fd < 0) {
       return -ENOENT;
    }
-   FILE *file = fdopen(fd, "r");
-   if (file == NULL) {
-      close(fd);
-      return -EBADFD;
-   }
 
    /* Ensure the size of the file is OK. */
-   fseek(file, 0L, SEEK_END);
-   size_t size = ftell(file);
+   size_t size = lseek(fd, 0L, SEEK_END);
    if (size > max_size) {
-      fclose(file);
       close(fd);
       return -EINVAL;
+   } else if (size == 0) {
+      close(fd);
    }
-   rewind(file);
+   lseek(fd, 0L, SEEK_SET);
 
-   /* Read into data and cache the data if it'll fit. */
-   read(fd, data, size);
-   fclose(file);
+   /* Read into data and cache the data if it'll fit. Ensure __nbytes is a
+      multiple of 4k for direct IO. */
+   read(fd, data, (size | 0xFFF) + 1);
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Make an entry. */
@@ -154,7 +154,8 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    /* Initialize the hash table. */
    cache->ht = NULL;
 
-   /* Allocate the cache's memory. */
+   /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
+      IO will work properly. */
    if ((cache->data = malloc(size)) == NULL) {
       return -ENOMEM;
    }

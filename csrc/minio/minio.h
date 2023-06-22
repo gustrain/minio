@@ -55,7 +55,8 @@ typedef struct {
     size_t   used;          /* Number of bytes cached. */
 
     /* State. */
-    uint8_t      *data;     /* First byte of SIZE bytes of memory. */
+    uint8_t      *data;     /* First byte of SIZE bytes of memory. Always 8-byte
+                               aligned. */
     hash_entry_t *ht;       /* Hash table, maps filename to data. */
 } cache_t;
 
