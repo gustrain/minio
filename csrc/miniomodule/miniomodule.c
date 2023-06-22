@@ -70,7 +70,7 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
 
     /* Set up the copy area. */
     cache->max_file_size = max_file_size;
-    if (posix_memalign(&cache->temp, BLOCK_SIZE, max_file_size) != 0) {
+    if (posix_memalign((void **) &cache->temp, BLOCK_SIZE, max_file_size) != 0) {
         PyErr_SetString(PyExc_MemoryError, "couldn't allocate temp area");
         PyErr_NoMemory();
         return -1;
