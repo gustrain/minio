@@ -151,7 +151,7 @@ main(int argc, char **argv)
         false
     };
 
-    /* Check that memcpy workers. */
+    /* Check that memcpy works. */
     uint8_t *foo, *bar;
     printf("testing memcpy...\n");
     assert((foo = malloc(32 * 1024 * 1024)) != NULL);
@@ -159,6 +159,15 @@ main(int argc, char **argv)
 
     memset(foo, 0x42, 32 * 1024 * 1024);
     memcpy(bar, foo, 32 * 1024 * 1024);
+    for (int i = 0; i < 32 * 1024 * 1024; i++) {
+        assert(foo[i] == bar[i]);
+    }
+
+    /* Check that direct read works. */
+    int fd_direct = open("test_minio.c", O_RDONLY | __O_DIRECT);
+    int fd_normal = open("test_minio.c", O_RDONLY);
+    read(fd_direct, foo, 32 * 1024 * 1024);
+    read(fd_normal, bar, 32 * 1024 * 1024);
     for (int i = 0; i < 32 * 1024 * 1024; i++) {
         assert(foo[i] == bar[i]);
     }
