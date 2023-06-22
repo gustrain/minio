@@ -6,6 +6,7 @@
 #include "../../csrc/minio/minio.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -21,6 +22,8 @@
 
 #define N_TEST_FILES (3)
 #define SPEEDUP_METRIC (2)
+
+#define BLOCK_SIZE (4096)
 
 /* Returns access time in nanoseconds. */
 long
@@ -51,8 +54,8 @@ test_timing(size_t cache_size,
     long times_cold[n_files];
 
     /* Where we're reading the file into from the cache. */
-    uint8_t *data = malloc(max_size);
-    assert(data != NULL);
+    uint8_t *data;
+    assert(posix_memalign((void **) &data, BLOCK_SIZE, max_size) == 0);
 
     /* Cache being tested. */
     cache_t cache;
@@ -115,8 +118,8 @@ test_integrity(size_t cache_size,
               int n_files)
 {
     /* Where we're reading the file into from the cache. */
-    uint8_t *data = malloc(max_size);
-    assert(data != NULL);
+    uint8_t *data;
+    assert(posix_memalign((void **) &data, BLOCK_SIZE, max_size) == 0);
 
     /* Cache being tested. */
     cache_t cache;
@@ -164,18 +167,12 @@ main(int argc, char **argv)
     #define MYSIZE (32 * 1024 * 1024)
     #define MYFILE "test_minio.c"
 
-    /* Check that memcpy works. */
     uint8_t *foo, *bar;
+    assert(posix_memalign((void **) &foo, BLOCK_SIZE, MYSIZE) == 0);
+    assert(posix_memalign((void **) &bar, BLOCK_SIZE, MYSIZE) == 0);
+
+    /* Check that memcpy works. */
     printf("testing memcpy...\n");
-    assert((foo = malloc(MYSIZE)) != NULL);
-    assert((bar = malloc(MYSIZE)) != NULL);
-
-    struct stat fstat;
-    stat(MYFILE, &fstat); 
-    int block_size = (int) fstat.st_blksize;
-
-    foo = get_aligned(foo, block_size);
-
     memset(foo, 0x42, MYSIZE);
     memcpy(bar, foo, MYSIZE);
     for (int i = 0; i < MYSIZE; i++) {
