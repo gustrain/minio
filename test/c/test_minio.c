@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #define KB (1024)
 #define MB (KB * KB)
@@ -138,6 +139,13 @@ test_integrity(size_t cache_size,
     free(data);
 }
 
+uint8_t *
+get_aligned(uint8_t *addr, int block_size)
+{
+    uintptr_t align = block_size - 1;
+    return (uint8_t *) (((uintptr_t) addr + align) & ~((uintptr_t) align));
+}
+
 int
 main(int argc, char **argv)
 {
@@ -153,33 +161,43 @@ main(int argc, char **argv)
         false
     };
 
+    #define MYSIZE (32 * 1024 * 1024)
+    #define MYFILE "test_minio.c"
+
     /* Check that memcpy works. */
     uint8_t *foo, *bar;
     printf("testing memcpy...\n");
-    assert((foo = malloc(32 * 1024 * 1024)) != NULL);
-    assert((bar = malloc(32 * 1024 * 1024)) != NULL);
+    assert((foo = malloc(MYSIZE)) != NULL);
+    assert((bar = malloc(MYSIZE)) != NULL);
 
-    memset(foo, 0x42, 32 * 1024 * 1024);
-    memcpy(bar, foo, 32 * 1024 * 1024);
-    for (int i = 0; i < 32 * 1024 * 1024; i++) {
+    struct stat fstat;
+    stat(MYFILE, &fstat); 
+    int block_size = (int) fstat.st_blksize;
+
+    foo = get_aligned(foo, block_size);
+
+    memset(foo, 0x42, MYSIZE);
+    memcpy(bar, foo, MYSIZE);
+    for (int i = 0; i < MYSIZE; i++) {
         assert(foo[i] == bar[i]);
     }
 
+
     /* Check that direct read works. */
     printf("testing directio...\n");
-    int fd_direct = open("test_minio.c", O_RDONLY | __O_DIRECT);
+    int fd_direct = open(MYFILE, O_RDONLY | __O_DIRECT);
     printf("fd: %d\n", fd_direct);
 
-    int fd_normal = open("test_minio.c", O_RDONLY);
+    int fd_normal = open(MYFILE, O_RDONLY);
     printf("starting offset: %ld\n", lseek(fd_direct, 0, SEEK_CUR));
 
-    printf("direct bytes: %ld\n", read(fd_direct, foo, 32 * 1024 * 1024));
-
+    printf("direct bytes: %ld\n", read(fd_direct, foo, MYSIZE));
+    
     printf("errno: %d, (%s)\n", errno, strerror(errno));
     printf("data addr: %p\n", foo);
     printf("ending offset: %ld\n", lseek(fd_direct, 0, SEEK_CUR));
-    printf("normal bytes: %ld\n", read(fd_normal, bar, 32 * 1024 * 1024));
-    for (int i = 0; i < 32 * 1024 * 1024; i++) {
+    printf("normal bytes: %ld\n", read(fd_normal, bar, MYSIZE));
+    for (int i = 0; i < MYSIZE; i++) {
         assert(foo[i] == bar[i]);
     }
 
