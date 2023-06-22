@@ -87,6 +87,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 
       return entry->size;
    }
+   printf("entry does NOT exist\n");
 
    /* Open the file in DIRECT mode. */
    int fd = open(filepath, O_RDONLY | __O_DIRECT);
