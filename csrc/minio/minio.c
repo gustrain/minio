@@ -81,11 +81,12 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
    static unsigned long n_accs = 0;
    static unsigned long n_hits = 0;
-   static unsigned long n_miss = 0;
+   static unsigned long n_miss_cold = 0;
+   static unsigned long n_miss_capacity = 0;
    static unsigned long n_fail = 0;
 
    if (n_accs % 1000 == 0) {
-      printf("[MinIO debug] accesses = %lu, hits = %lu, misses = %lu, fails = %lu (usage = %lu/%lu MB)\n", n_accs, n_hits, n_miss, n_fail, cache->used, cache->size);
+      printf("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB)\n", n_accs, n_hits, n_miss_cold, n_miss_capacity, n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024));
    }
 
    n_accs++;
@@ -140,9 +141,11 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 
       /* Place the entry into the hash table. */
       HASH_ADD_STR(cache->ht, filepath, entry);
+      n_miss_cold++;
+   } else {
+      n_miss_capacity++;
    }
 
-   n_miss++;
    return size;
 }
 
