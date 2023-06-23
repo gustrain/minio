@@ -28,6 +28,7 @@
 
 #include "../include/uthash.h"
 #include <pthread.h>
+#include <sys/mman.h>
 
 #define MAX_PATH_LENGTH 128
 

@@ -82,16 +82,15 @@ static policy_func_t *policy_table[N_POLICIES] = {
 void *
 mmap_alloc(size_t size)
 {
-   printf("size: %lu", size);
+   printf("size: %lu\n", size);
 
    /* Allocate SIZE bytes of page-aligned memory in an anonymous shared mmap. */
    void *ptr = mmap(NULL, size,
                     PROT_READ | PROT_WRITE,
-                    MAP_ANON,
-                  //   MAP_SHARED_VALIDATE | MAP_ANON | MAP_POPULATE,
+                    MAP_ANONYMOUS | MAP_SHARED | MAP_POPULATE | MAP_LOCKED,
                     -1, 0);
    
-   printf("ptr: %p, strerr: %s\n", ptr, strerror(errno));
+   printf("ptr: %p\nstrerr: %s\n", ptr, strerror(errno));
 
    /* mlock the region for good measure, given MAP_LOCKED is suggested to be
       used in conjunction with mlock in applications where it matters. */
@@ -208,6 +207,7 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->n_miss_cold = 0;
 
    void *foo = mmap_alloc(1024 * 1024);
+   printf("----\n");
 
    /* Initialize the hash table. Allocate more entries than we'll likely need,
       since file size may vary, and entries are relatively small. */
