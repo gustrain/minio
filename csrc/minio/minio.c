@@ -85,7 +85,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    static unsigned long n_fail = 0;
 
    if (n_accs % 1000 == 0) {
-      printf("[MinIO debug] accesses = %lu, hits = %lu, misses = %lu, fails = %lu (usage = %lu/%lu MB\n", n_accs, n_hits, n_miss, n_fail, cache->used, cache->size);
+      printf("[MinIO debug] accesses = %lu, hits = %lu, misses = %lu, fails = %lu (usage = %lu/%lu MB)\n", n_accs, n_hits, n_miss, n_fail, cache->used, cache->size);
    }
 
    n_accs++;
