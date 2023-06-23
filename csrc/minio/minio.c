@@ -88,9 +88,12 @@ mmap_alloc(size_t size)
                     MAP_SHARED_VALIDATE | MAP_ANON | MAP_POPULATE,
                     -1, 0);
    
+   printf("ptr: %p\n", ptr);
+
    /* mlock the region for good measure, given MAP_LOCKED is suggested to be
       used in conjunction with mlock in applications where it matters. */
    if (mlock(ptr, size) != 0) {
+      printf("mlock failed\n");
       /* Don't allow a double failure. */
       assert(munmap(ptr, size) == 0);
       return NULL;
@@ -207,12 +210,14 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->max_ht_entries = 2 * (size / AVERAGE_FILE_SIZE);
    cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
    if ((cache->ht_entries = mmap_alloc(cache->ht_size)) == NULL) {
+      printf("AAA\n");
       return -ENOMEM;
    }
 
    /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
       IO will work properly. */
    if ((cache->data = mmap_alloc(cache->size)) == NULL) {
+      printf("BBB\n");
       munmap(cache->ht_entries, cache->ht_size);
       return -ENOMEM;
    }
