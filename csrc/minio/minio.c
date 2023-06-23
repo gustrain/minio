@@ -206,6 +206,9 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->n_miss_capacity = 0;
    cache->n_miss_cold = 0;
 
+   void *foo = mmap_alloc(1024 * 1024);
+   printf("%p\n", foo);
+
    /* Initialize the hash table. Allocate more entries than we'll likely need,
       since file size may vary, and entries are relatively small. */
    cache->ht = NULL;
