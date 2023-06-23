@@ -80,7 +80,7 @@ ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
    if (cache->n_accs % 1000 == 0) {
-      printf("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid());
+      printf("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
    }
 
    cache->n_accs++;
@@ -182,7 +182,7 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
       return -EPERM;
    }
 
-   printf("[MinIO debug] Initialized %lu byte cache, starting at %p (pid = %d, ppid = %d)\n", size, cache->data, getpid(), getppid());
+   printf("[MinIO debug] Initialized %lu byte cache, starting at %p (pid = %d)\n", size, cache->data, getpid());
 
    return 0;
 }
