@@ -61,9 +61,9 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     PyCache *cache = (PyCache *) self;
 
     /* Parse arguments. */
-    int size, max_file_size;
+    size_t size, max_file_size;
     static char *kwlist[] = {"size", "max_file_size", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ll", kwlist, &size, &max_file_size)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk", kwlist, &size, &max_file_size)) {
         PyErr_SetString(PyExc_Exception, "missing/invalid argument");
         return -1;
     }
@@ -108,7 +108,7 @@ PyCache_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *) self;
 }
 
-/* PyCache read/get method. */
+/* PyCache read/get method. Returns (data, size) as a tuple. */
 static PyObject *
 PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
 {
@@ -143,8 +143,8 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
 
         return NULL;
     }
-    
-    return PyBytes_FromStringAndSize((char *) self->temp, size);
+
+    return PyTuple_Pack(2, PyBytes_FromStringAndSize((char *) self->temp, size), PyLong_FromLong(size));
 }
 
 /* PyCache method to flush the cache. */
