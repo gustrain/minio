@@ -67,6 +67,38 @@ static policy_func_t *policy_table[N_POLICIES] = {
 };
 
 
+/* ----------------- */
+/*   SHARED MEMORY   */
+/* ----------------- */
+
+#define AVERAGE_FILE_SIZE (100 * 1024)
+
+/* Allocate shared, page-locked memory, using an anonymous mmap. If this process
+   forks, and all "shared" state was allocated using this function, everything
+   will behave properly, as if we're synchronizing threads.
+   
+   Returns a pointer to a SIZE-byte region of memory on success, and returns
+   NULL on failure. */
+void *
+mmap_alloc(size_t size)
+{
+   /* Allocate SIZE bytes of page-aligned memory in an anonymous shared mmap. */
+   void *ptr = mmap(NULL, size,
+                    PROT_READ | PROT_WRITE,
+                    MAP_SHARED_VALIDATE | MAP_ANON | MAP_LOCKED | MAP_POPULATE,
+                    -1, 0);
+   
+   /* mlock the region for good measure, given MAP_LOCKED is suggested to be
+      used in conjunction with mlock in applications where it matters. */
+   if (mlock(ptr, size) != 0) {
+      /* Don't allow a double failure. */
+      assert(munmap(ptr, size) == 0);
+      return NULL;
+   }
+
+   return ptr;
+}
+
 /* ------------- */
 /*   INTERFACE   */
 /* ------------- */
@@ -119,12 +151,13 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    read(fd, data, (size | 0xFFF) + 1);
    close(fd);
    if (size <= cache->size - cache->used) {
-      /* Make an entry. */
-      entry = malloc(sizeof(hash_entry_t));
-      if (entry == NULL) {
+      /* Acquire an entry. */
+      hash_entry_t *entry = cache->ht_entries[cache->n_ht_entries++];
+      if (cache->n_ht_entries > cache->max_ht_entries) {
          cache->n_fail++;
          return -ENOMEM;
       }
+
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
       entry->size = size;
 
@@ -168,21 +201,23 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->n_miss_capacity = 0;
    cache->n_miss_cold = 0;
 
-   /* Initialize the hash table. */
+   /* Initialize the hash table. Allocate more entries than we'll likely need,
+      since file size may vary, and entries are relatively small. */
    cache->ht = NULL;
-
-   /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
-      IO will work properly. */
-   if ((cache->data = malloc(size)) == NULL) {
+   cache->max_ht_entries = 2 * (size / AVERAGE_FILE_SIZE);
+   cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
+   if ((cache->ht_entries = mmap_alloc(cache->ht_size) == NULL) {
       return -ENOMEM;
    }
 
-   /* Pin the cache's memory. */
-   if (mlock(cache->data, size) != 0) {
-      return -EPERM;
+   /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
+      IO will work properly. */
+   if ((cache->data = mmap_alloc(cache->size)) == NULL) {
+      munmap(cache->ht_entries, cache->ht_size);
+      return -ENOMEM;
    }
 
-   printf("[MinIO debug] Initialized %lu byte cache, starting at %p (pid = %d)\n", size, cache->data, getpid());
+   printf("[MinIO debug] Initialized %lu byte cache, starting at %p (pid = %d)\n", cache->size, cache->data, getpid());
 
    return 0;
 }

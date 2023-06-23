@@ -45,37 +45,34 @@ typedef struct {
     void   *ptr;                            /* Pointer to this file's data. */
     size_t  size;                           /* Size of file data in bytes. */
 
-    // /* Synchronization. */
-    // pthread_rw
-    // pthread_mutex_t lock;                   /* M*/
-
     UT_hash_handle hh;
 } hash_entry_t;
 
 /* Cache. */
 typedef struct {
     /* Configuration. */
-    policy_t policy;        /* Replacement policy. Only MinIO supported. */
-    size_t   size;          /* Size of cache in bytes. */
-    size_t   used;          /* Number of bytes cached. */
-
-    // /* Synchronization. */
-    // pthread_mutex_t used_lock;
+    policy_t policy;            /* Replacement policy. Only MinIO supported. */
+    size_t   size;              /* Size of cache in bytes. */
+    size_t   ht_size;           /* Number of bytes allocated for HT entries. */
+    size_t   max_ht_entries;    /* Maximum number of HT entries. */
 
     /* State. */
-    uint8_t      *data;     /* First byte of SIZE bytes of memory. Always 8-byte
-                               aligned. */
-    hash_entry_t *ht;       /* Hash table, maps filename to data. */
+    size_t        used;             /* Number of bytes cached. */
+    uint8_t      *data;             /* First byte of SIZE bytes of memory. */
+    hash_entry_t *ht_entries;       /* Memory used for HT entries. */
+    size_t        n_ht_entries;     /* Current number of HT entries. */
+    hash_entry_t *ht;               /* Hash table, maps filename to data. */
 
     /* Statistics. */
-    unsigned long n_accs;
-    unsigned long n_hits;
-    unsigned long n_miss_cold;
-    unsigned long n_miss_capacity;
-    unsigned long n_fail;
+    size_t n_accs;
+    size_t n_hits;
+    size_t n_miss_cold;
+    size_t n_miss_capacity;
+    size_t n_fail;
 } cache_t;
 
 
+void *mmap_alloc(size_t size);
 ssize_t cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size);
 void cache_flush(cache_t *cache);
 int cache_init(cache_t *cache, size_t size, policy_t policy);
