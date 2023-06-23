@@ -60,11 +60,11 @@ typedef struct {
     hash_entry_t *ht;       /* Hash table, maps filename to data. */
 
     /* Statistics. */
-    unsigned long n_accs = 0;
-    unsigned long n_hits = 0;
-    unsigned long n_miss_cold = 0;
-    unsigned long n_miss_capacity = 0;
-    unsigned long n_fail = 0;
+    unsigned long n_accs;
+    unsigned long n_hits;
+    unsigned long n_miss_cold;
+    unsigned long n_miss_capacity;
+    unsigned long n_fail;
 } cache_t;
 
 
