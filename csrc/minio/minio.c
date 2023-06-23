@@ -182,7 +182,7 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
       return -EPERM;
    }
 
-   printf("[MinIO debug] Initialized %lu byte cache, starting at %p (pid = %d)\n", size, cache->data, getpid());
+   printf("[MinIO debug] Initialized %lu byte cache, starting at %p (pid = %d, ppid = %d)\n", size, cache->data, getpid(), getppid());
 
    return 0;
 }
