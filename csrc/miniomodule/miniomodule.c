@@ -61,9 +61,9 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     PyCache *cache = (PyCache *) self;
 
     /* Parse arguments. */
-    long size, max_file_size;
+    size_t size, max_file_size;
     static char *kwlist[] = {"size", "max_file_size", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ll", kwlist, &size, &max_file_size)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk", kwlist, &size, &max_file_size)) {
         PyErr_SetString(PyExc_Exception, "missing/invalid argument");
         return -1;
     }
