@@ -87,7 +87,8 @@ mmap_alloc(size_t size)
    /* Allocate SIZE bytes of page-aligned memory in an anonymous shared mmap. */
    void *ptr = mmap(NULL, size,
                     PROT_READ | PROT_WRITE,
-                    MAP_SHARED_VALIDATE | MAP_ANON | MAP_POPULATE,
+                    MAP_ANON,
+                  //   MAP_SHARED_VALIDATE | MAP_ANON | MAP_POPULATE,
                     -1, 0);
    
    printf("ptr: %p, strerr: %s\n", ptr, strerror(errno));
@@ -207,7 +208,6 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->n_miss_cold = 0;
 
    void *foo = mmap_alloc(1024 * 1024);
-   printf("%p\n", foo);
 
    /* Initialize the hash table. Allocate more entries than we'll likely need,
       since file size may vary, and entries are relatively small. */
