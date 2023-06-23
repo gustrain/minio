@@ -88,7 +88,7 @@ mmap_alloc(size_t size)
                     MAP_SHARED_VALIDATE | MAP_ANON | MAP_POPULATE,
                     -1, 0);
    
-   printf("ptr: %p\n", ptr);
+   printf("ptr: %p, strerr: %s\n", ptr, strerror(errno));
 
    /* mlock the region for good measure, given MAP_LOCKED is suggested to be
       used in conjunction with mlock in applications where it matters. */
