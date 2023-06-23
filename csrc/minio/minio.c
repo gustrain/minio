@@ -82,6 +82,8 @@ static policy_func_t *policy_table[N_POLICIES] = {
 void *
 mmap_alloc(size_t size)
 {
+   printf("size: %lu", size);
+
    /* Allocate SIZE bytes of page-aligned memory in an anonymous shared mmap. */
    void *ptr = mmap(NULL, size,
                     PROT_READ | PROT_WRITE,
