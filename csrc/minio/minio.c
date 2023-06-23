@@ -85,7 +85,7 @@ mmap_alloc(size_t size)
    /* Allocate SIZE bytes of page-aligned memory in an anonymous shared mmap. */
    void *ptr = mmap(NULL, size,
                     PROT_READ | PROT_WRITE,
-                    MAP_SHARED_VALIDATE | MAP_ANON | MAP_LOCKED | MAP_POPULATE,
+                    MAP_SHARED_VALIDATE | MAP_ANON | MAP_POPULATE,
                     -1, 0);
    
    /* mlock the region for good measure, given MAP_LOCKED is suggested to be
