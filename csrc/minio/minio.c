@@ -152,7 +152,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Acquire an entry. */
-      hash_entry_t *entry = cache->ht_entries[cache->n_ht_entries++];
+      hash_entry_t *entry = &cache->ht_entries[cache->n_ht_entries++];
       if (cache->n_ht_entries > cache->max_ht_entries) {
          cache->n_fail++;
          return -ENOMEM;
@@ -206,7 +206,7 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->ht = NULL;
    cache->max_ht_entries = 2 * (size / AVERAGE_FILE_SIZE);
    cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
-   if ((cache->ht_entries = mmap_alloc(cache->ht_size) == NULL) {
+   if ((cache->ht_entries = mmap_alloc(cache->ht_size)) == NULL) {
       return -ENOMEM;
    }
 
