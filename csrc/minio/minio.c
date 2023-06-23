@@ -79,6 +79,17 @@ static policy_func_t *policy_table[N_POLICIES] = {
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
+   static unsigned long n_accs = 0;
+   static unsigned long n_hits = 0;
+   static unsigned long n_miss = 0;
+   static unsigned long n_fail = 0;
+
+   if (n_accs % 1000 == 0) {
+      printf("[MinIO debug] accesses = %lu, hits = %lu, misses = %lu, fails = %lu\n", n_accs, n_hits, n_miss, n_fail);
+   }
+
+   n_accs++;
+
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, filepath, entry);
@@ -89,33 +100,34 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       }
       memcpy(data, entry->ptr, entry->size);
 
+      n_hits++;
       return entry->size;
    }
 
    /* Open the file in DIRECT mode. */
    int fd = open(filepath, O_RDONLY | __O_DIRECT);
    if (fd < 0) {
+      n_fail++;
       return -ENOENT;
    }
 
    /* Ensure the size of the file is OK. */
    size_t size = lseek(fd, 0L, SEEK_END);
-   if (size > max_size) {
+   if (size > max_size || size == 0) {
       close(fd);
+      n_fail++;
       return -EINVAL;
-   } else if (size == 0) {
-      close(fd);
    }
    lseek(fd, 0L, SEEK_SET);
 
-   /* Read into data and cache the data if it'll fit. Ensure __nbytes is a
-      multiple of 4k for direct IO. */
+   /* Read into data and cache the data if it'll fit. */
    read(fd, data, (size | 0xFFF) + 1);
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Make an entry. */
       entry = malloc(sizeof(hash_entry_t));
       if (entry == NULL) {
+         n_fail++;
          return -ENOMEM;
       }
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
@@ -130,6 +142,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       HASH_ADD_STR(cache->ht, filepath, entry);
    }
 
+   n_miss++;
    return size;
 }
 
