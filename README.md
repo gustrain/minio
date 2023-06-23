@@ -12,7 +12,6 @@ pip install MinIO-Cache
 ```
 
 #### Manual
-Alternatively, manually install the package:
 ```bash
 python setup.py install
 ```
