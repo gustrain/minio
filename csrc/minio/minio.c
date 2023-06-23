@@ -79,17 +79,11 @@ static policy_func_t *policy_table[N_POLICIES] = {
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
-   static unsigned long n_accs = 0;
-   static unsigned long n_hits = 0;
-   static unsigned long n_miss_cold = 0;
-   static unsigned long n_miss_capacity = 0;
-   static unsigned long n_fail = 0;
-
-   if (n_accs % 1000 == 0) {
-      printf("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB)\n", n_accs, n_hits, n_miss_cold, n_miss_capacity, n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024));
+   if (cache->n_accs % 1000 == 0) {
+      printf("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024));
    }
 
-   n_accs++;
+   cache->n_accs++;
 
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
@@ -101,14 +95,14 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       }
       memcpy(data, entry->ptr, entry->size);
 
-      n_hits++;
+      cache->n_hits++;
       return entry->size;
    }
 
    /* Open the file in DIRECT mode. */
    int fd = open(filepath, O_RDONLY | __O_DIRECT);
    if (fd < 0) {
-      n_fail++;
+      cache->n_fail++;
       return -ENOENT;
    }
 
@@ -116,7 +110,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    size_t size = lseek(fd, 0L, SEEK_END);
    if (size > max_size || size == 0) {
       close(fd);
-      n_fail++;
+      cache->n_fail++;
       return -EINVAL;
    }
    lseek(fd, 0L, SEEK_SET);
@@ -128,7 +122,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       /* Make an entry. */
       entry = malloc(sizeof(hash_entry_t));
       if (entry == NULL) {
-         n_fail++;
+         cache->n_fail++;
          return -ENOMEM;
       }
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
@@ -141,9 +135,9 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 
       /* Place the entry into the hash table. */
       HASH_ADD_STR(cache->ht, filepath, entry);
-      n_miss_cold++;
+      cache->n_miss_cold++;
    } else {
-      n_miss_capacity++;
+      cache->n_miss_capacity++;
    }
 
    return size;
@@ -166,6 +160,13 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->size = size;
    cache->used = 0;
    cache->policy = policy;
+
+   /* Zero initial stats. */
+   cache->n_accs = 0;
+   cache->n_fail = 0;
+   cache->n_hits = 0;
+   cache->n_miss_capacity = 0;
+   cache->n_miss_cold = 0;
 
    /* Initialize the hash table. */
    cache->ht = NULL;

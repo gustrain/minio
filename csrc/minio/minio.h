@@ -58,6 +58,13 @@ typedef struct {
     uint8_t      *data;     /* First byte of SIZE bytes of memory. Always 8-byte
                                aligned. */
     hash_entry_t *ht;       /* Hash table, maps filename to data. */
+
+    /* Statistics. */
+    unsigned long n_accs = 0;
+    unsigned long n_hits = 0;
+    unsigned long n_miss_cold = 0;
+    unsigned long n_miss_capacity = 0;
+    unsigned long n_fail = 0;
 } cache_t;
 
 
