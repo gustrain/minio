@@ -217,6 +217,8 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    int n_ht_entries_log2 = 0;
    while (n_ht_entries_copy >>= 1) ++n_ht_entries_log2;
 
+   ALT_DEBUG_LOG("cache->ht: %p, cache->n_ht_entries: %d, n_ht_entries_log2: %d", cache->ht, cache->n_ht_entries, n_ht_entries_log2);
+
    HASH_MAKE_TABLE(hh, cache->ht, 0, cache->n_ht_entries, n_ht_entries_log2);
 
    /* Set up each of the HT entries. */
