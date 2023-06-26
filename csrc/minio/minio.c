@@ -66,13 +66,13 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    HASH_FIND_STR(cache->ht, filepath, entry);
    if (entry != NULL) {
       /* Don't overflow the buffer. */
-      // pthread_rwlock_rdlock(&entry->rwlock);
+      pthread_rwlock_rdlock(&entry->rwlock);
       if (entry->size > max_size) {
-         // pthread_rwlock_unlock(&entry->rwlock);
+         pthread_rwlock_unlock(&entry->rwlock);
          return -EINVAL;
       }
       memcpy(data, entry->ptr, entry->size);
-      // pthread_rwlock_unlock(&entry->rwlock);
+      pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_hits);
       return entry->size;
@@ -110,7 +110,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       pthread_mutex_unlock(&cache->meta_lock);
 
       /* Acquire the writer lock before writing. */
-      // pthread_rwlock_wrlock(&entry->rwlock);
+      pthread_rwlock_wrlock(&entry->rwlock);
 
       /* Copy the filepath into the entry. */
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
@@ -124,7 +124,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 
       /* Copy data to the cache. */
       memcpy(entry->ptr, data, size);
-      // pthread_rwlock_unlock(&entry->rwlock);
+      pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);
    } else {
@@ -145,7 +145,7 @@ cache_flush(cache_t *cache)
 
    /* Acquire every entry lock. */
    for (size_t i = 0; i < old_n_entries; i++) {
-      // pthread_rwlock_wrlock(&cache->ht_entries[i].rwlock);
+      pthread_rwlock_wrlock(&cache->ht_entries[i].rwlock);
    }
    
    /* Clear the HT and the cache metadata. */
@@ -155,7 +155,7 @@ cache_flush(cache_t *cache)
 
    /* Release every entry lock. */
    for (size_t i = 0; i < old_n_entries; i++) {
-      // pthread_rwlock_unlock(&cache->ht_entries[i].rwlock);
+      pthread_rwlock_unlock(&cache->ht_entries[i].rwlock);
    }
 
    pthread_mutex_unlock(&cache->meta_lock);
