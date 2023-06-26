@@ -42,9 +42,9 @@
 #define AVERAGE_FILE_SIZE (100 * 1024)
 
 #define STAT_INC(cache, field)                                          \
-         cache->field++
-         // pthread_mutex_lock(&cache->stats_lock);                        
-         // pthread_mutex_unlock(&cache->stats_lock)
+         pthread_mutex_lock(&cache->stats_lock);                        \
+         cache->field++;                                                \
+         pthread_mutex_unlock(&cache->stats_lock)
 
 
 /* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
@@ -55,6 +55,8 @@
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
+   printf("%lu\n", cache->n_accs);
+   DEBUG_LOG("%lu\n", cache->n_accs);
    if (cache->n_accs % 1000 == 0) {
       DEBUG_LOG("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
    }
