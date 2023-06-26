@@ -43,7 +43,7 @@
 
 #define STAT_INC(cache, field)                                          \
          pthread_mutex_lock(&cache->stats_lock);                        \
-         cache->field++;                                                \  
+         cache->field++;                                                \
          pthread_mutex_unlock(&cache->stats_lock)
 
 
