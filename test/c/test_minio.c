@@ -82,10 +82,9 @@ test_timing(size_t cache_size,
 
 /* Verify that DATA contains the same data as the file at FILEPATH. */
 bool
-verify_integrity(char *filepath, uint8_t *data, size_t size)
+verify_integrity(char *filepath, uint8_t *data, ssize_t size)
 {
     /* Read a fresh copy of the data from storage. */
-    printf("%lu size\n", size);
     uint8_t *baseline = malloc(size);
     assert(baseline != NULL);
     int fd = open(filepath, O_RDONLY);
@@ -123,14 +122,18 @@ test_integrity(size_t cache_size,
 
     /* Cold accesses. */
     for (int i = 0; i < n_files; i++) {
-        long size = cache_read(&cache, filepaths[i], data, max_size);
+        ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
+        printf("size: %ld\n", size);
+        assert(size > 0);
         // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
 
     /* Hot accesses. */
     for (int i = 0; i < n_files; i++) {
-        long size = cache_read(&cache, filepaths[i], data, max_size);
+        ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
+        printf("size: %ld\n", size);
+        assert(size > 0);
         // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
