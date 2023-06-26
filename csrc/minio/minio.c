@@ -118,10 +118,8 @@ mmap_alloc(size_t size)
 /* ------------- */
 
 #define STAT_INC(cache, field)                                          \
-         DEBUG_LOG("acquiring &cache->stats_lock (pid %d)\n", getpid());   \
          pthread_mutex_lock(&cache->stats_lock);                        \
          cache->field++;                                                \
-         DEBUG_LOG("releasing &cache->stats_lock (pid %d)\n", getpid());   \
          pthread_mutex_unlock(&cache->stats_lock)
 
 /* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
