@@ -46,6 +46,10 @@ typedef struct {
     void   *ptr;                            /* Pointer to this file's data. */
     size_t  size;                           /* Size of file data in bytes. */
 
+    /* Synchronization. */
+    pthread_rwlock_t rwlock;                /* Reader/writer lock protecting
+                                               this entry. */
+
     UT_hash_handle hh;
 } hash_entry_t;
 
@@ -70,6 +74,11 @@ typedef struct {
     size_t n_miss_cold;
     size_t n_miss_capacity;
     size_t n_fail;
+
+    /* Synchronization. */
+    pthread_mutex_t meta_lock;      /* Mutex protecting metadata (USED and
+                                       N_HT_ENTRIES fields). */
+    pthread_mutex_t stats_lock;     /* Mutex protecting statistics fields. */
 } cache_t;
 
 
