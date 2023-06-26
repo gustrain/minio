@@ -151,12 +151,14 @@ do {                                                                            
 
 #define HASH_VALUE(keyptr,keylen,hashv)                                          \
 do {                                                                             \
+  ALT_DEBUG_LOG("HASH_VALUE\n");                                                 \
   HASH_FUNCTION(keyptr, keylen, hashv);                                          \
 } while (0)
 
 #define HASH_FIND_BYHASHVALUE(hh,head,keyptr,keylen,hashval,out)                 \
 do {                                                                             \
   (out) = NULL;                                                                  \
+  ALT_DEBUG_LOG("HASH_FIND_BYHASHVALUE\n");                                      \
   if (head) {                                                                    \
     unsigned _hf_bkt;                                                            \
     HASH_TO_BKT(hashval, (head)->hh.tbl->num_buckets, _hf_bkt);                  \
@@ -436,6 +438,7 @@ do {                                                                            
 
 #define HASH_TO_BKT(hashv,num_bkts,bkt)                                          \
 do {                                                                             \
+  ALT_DEBUG_LOG("HASH_TO_BKT\n");                                                \
   bkt = ((hashv) & ((num_bkts) - 1U));                                           \
 } while (0)
 
