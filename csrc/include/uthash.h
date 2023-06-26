@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>   /* memcmp, memset, strlen */
 #include <stddef.h>   /* ptrdiff_t */
 #include <stdlib.h>   /* exit */
-#include "../minio/minio.h"
 
 #if defined(HASH_DEFINE_OWN_STDINT) && HASH_DEFINE_OWN_STDINT
 /* This codepath is provided for backward compatibility, but I plan to remove it. */
@@ -76,7 +75,7 @@ do {                                                                            
 #endif
 
 #ifndef uthash_malloc
-#define uthash_malloc(sz) mmap_alloc(sz)  /* malloc fcn -- changed for minio */
+#define uthash_malloc(sz) malloc(sz)      /* malloc fcn                      */
 #endif
 #ifndef uthash_free
 #define uthash_free(ptr,sz) free(ptr)     /* free fcn                        */
