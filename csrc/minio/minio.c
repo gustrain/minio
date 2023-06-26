@@ -38,6 +38,14 @@
 
 #include "../include/uthash.h"
 
+/* ---------------- */
+/*   DEBUG MACROS   */
+/* ---------------- */
+
+#define DEBUG 0
+#define DEBUG_LOG(fmt, ...) \
+    do { if (DEBUG) fDEBUG_LOG(stderr, "[%8s:%-5d] " fmt, __FILE__, \
+                            __LINE__, ## __VA_ARGS__); } while (0)
 
 /* ------------------------ */
 /*   REPLACEMENT POLICIES   */
@@ -103,10 +111,10 @@ mmap_alloc(size_t size)
 /* ------------- */
 
 #define STAT_INC(cache, field)                                          \
-         printf("acquiring &cache->stats_lock (pid %d)\n", getpid());   \
+         DEBUG_LOG("acquiring &cache->stats_lock (pid %d)\n", getpid());   \
          pthread_mutex_lock(&cache->stats_lock);                        \
          cache->field++;                                                \
-         printf("releasing &cache->stats_lock (pid %d)\n", getpid());   \
+         DEBUG_LOG("releasing &cache->stats_lock (pid %d)\n", getpid());   \
          pthread_mutex_unlock(&cache->stats_lock)
 
 /* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
@@ -128,14 +136,14 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    HASH_FIND_STR(cache->ht, filepath, entry);
    if (entry != NULL) {
       /* Don't overflow the buffer. */
-      printf("acquiring entry %s READ lock (pid %d)\n", filepath, getpid());
+      DEBUG_LOG("acquiring entry %s READ lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_rdlock(&entry->rwlock);
       if (entry->size > max_size) {
          pthread_rwlock_unlock(&entry->rwlock);
          return -EINVAL;
       }
       memcpy(data, entry->ptr, entry->size);
-      printf("releasing entry %s READ lock (pid %d)\n", filepath, getpid());
+      DEBUG_LOG("releasing entry %s READ lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_hits);
@@ -163,10 +171,10 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Acquire an entry. */
-      printf("acquiring entry &cache->meta_lock (pid %d)\n", getpid());
+      DEBUG_LOG("acquiring entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_lock(&cache->meta_lock);
       hash_entry_t *entry = &cache->ht_entries[cache->n_ht_entries++];
-      printf("releasing entry &cache->meta_lock (pid %d)\n", getpid());
+      DEBUG_LOG("releasing entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_unlock(&cache->meta_lock);
       if (cache->n_ht_entries > cache->max_ht_entries) {
          STAT_INC(cache, n_fail);
@@ -175,7 +183,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       HASH_ADD_STR(cache->ht, filepath, entry);
 
       /* Acquire the writer lock before writing. */
-      printf("acquiring entry %s WRITE lock (pid %d)\n", filepath, getpid());
+      DEBUG_LOG("acquiring entry %s WRITE lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_wrlock(&entry->rwlock);
 
       /* Copy the filepath into the entry. */
@@ -183,14 +191,14 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       entry->size = size;
 
       /* Copy data to the cache. */
-      printf("acquiring entry &cache->meta_lock (pid %d)\n", getpid());
+      DEBUG_LOG("acquiring entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_lock(&cache->meta_lock);
       entry->ptr = cache->data + cache->used;
       memcpy(entry->ptr, data, size);
       cache->used += size;
-      printf("releasing entry &cache->meta_lock (pid %d)\n", getpid());
+      DEBUG_LOG("releasing entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_unlock(&cache->meta_lock);
-      printf("releasing entry %s WRITE lock (pid %d)\n", filepath, getpid());
+      DEBUG_LOG("releasing entry %s WRITE lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);
