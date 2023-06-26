@@ -131,36 +131,28 @@ mmap_alloc(size_t size)
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
-   ALT_DEBUG_LOG("pid %d\n", getpid());
-
    if (cache->n_accs % 1000 == 0) {
       printf("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
    }
 
    STAT_INC(cache, n_accs);
 
-   ALT_DEBUG_LOG("pid %d\n", getpid());
-
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, filepath, entry);
    if (entry != NULL) {
       /* Don't overflow the buffer. */
-      DEBUG_LOG("acquiring entry %s READ lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_rdlock(&entry->rwlock);
       if (entry->size > max_size) {
          pthread_rwlock_unlock(&entry->rwlock);
          return -EINVAL;
       }
       memcpy(data, entry->ptr, entry->size);
-      DEBUG_LOG("releasing entry %s READ lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_hits);
       return entry->size;
    }
-
-   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    /* Open the file in DIRECT mode. */
    int fd = open(filepath, O_RDONLY | __O_DIRECT);
@@ -168,8 +160,6 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       STAT_INC(cache, n_fail);
       return -ENOENT;
    }
-
-   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    /* Ensure the size of the file is OK. */
    size_t size = lseek(fd, 0L, SEEK_END);
@@ -180,60 +170,40 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    }
    lseek(fd, 0L, SEEK_SET);
 
-   ALT_DEBUG_LOG("pid %d\n", getpid());
-
    /* Read into data and cache the data if it'll fit. */
    read(fd, data, (size | 0xFFF) + 1);
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Acquire an entry. */
-      DEBUG_LOG("acquiring entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_lock(&cache->meta_lock);
       hash_entry_t *entry = &cache->ht_entries[cache->n_ht_entries++];
-      DEBUG_LOG("releasing entry &cache->meta_lock (pid %d)\n", getpid());
-      ALT_DEBUG_LOG("entries: %lu, max: %lu", cache->n_ht_entries, cache->max_ht_entries);
       if (cache->n_ht_entries > cache->max_ht_entries) {
          STAT_INC(cache, n_fail);
          pthread_mutex_unlock(&cache->meta_lock);
          return -ENOMEM;
       }
-      ALT_DEBUG_LOG("pid %d\n", getpid());
-      ALT_DEBUG_LOG("pid %d -- cache %p\n", cache);
-      ALT_DEBUG_LOG("pid %d -- cache->ht %p\n", cache->ht);
       HASH_ADD_STR(cache->ht, filepath, entry);
       pthread_mutex_unlock(&cache->meta_lock);
-      ALT_DEBUG_LOG("pid %d\n", getpid());
 
       /* Acquire the writer lock before writing. */
-      DEBUG_LOG("acquiring entry %s WRITE lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_wrlock(&entry->rwlock);
 
       /* Copy the filepath into the entry. */
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
       entry->size = size;
 
-      ALT_DEBUG_LOG("pid %d\n", getpid());
-
       /* Copy data to the cache. */
-      DEBUG_LOG("acquiring entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_lock(&cache->meta_lock);
       entry->ptr = cache->data + cache->used;
       memcpy(entry->ptr, data, size);
       cache->used += size;
-      DEBUG_LOG("releasing entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_unlock(&cache->meta_lock);
-      DEBUG_LOG("releasing entry %s WRITE lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_unlock(&entry->rwlock);
-
-      ALT_DEBUG_LOG("pid %d\n", getpid());
 
       STAT_INC(cache, n_miss_cold);
    } else {
-      ALT_DEBUG_LOG("pid %d\n", getpid());
       STAT_INC(cache, n_miss_capacity);
    }
-
-   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    return size;
 }
