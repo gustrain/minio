@@ -289,6 +289,7 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    /* Initialize the hash table. Allocate more entries than we'll likely need,
       since file size may vary, and entries are relatively small. */
    cache->ht = NULL;
+   cache->n_ht_entries = 0;
    cache->max_ht_entries = 2 * (size / AVERAGE_FILE_SIZE);
    cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
    if ((cache->ht_entries = mmap_alloc(cache->ht_size)) == NULL) {
