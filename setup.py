@@ -1,7 +1,7 @@
 from distutils.core import setup, Extension
 
 MAJOR = 0
-MINOR = 1
+MINOR = 2
 MICRO = 0
 VERSION = '{}.{}.{}'.format(MAJOR, MINOR, MICRO)
 
