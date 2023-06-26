@@ -45,12 +45,22 @@ PyCache_dealloc(PyObject *self)
 {
     PyCache *cache = (PyCache *) self;
 
-    /* Free the memory allocate for the cache region. */
+    /* Free the shared memory allocated for the cache region. */
     if (cache->cache->data != NULL) {
-        free(cache->cache->data);
+        munmap(cache->cache->data, cache->cache->size);
     }
 
-    /* Free the cache struct itself. */
+    /* Free the memory allocated for the copy region. */
+    if (cache->temp != NULL) {
+        free(cache->temp);
+    }
+
+    /* Free the shared memory allocated for the cache struct. */
+    if (cache->cache != NULL) {
+        munmap(cache->cache, sizeof(cache_t));
+    }
+
+    /* Free the cache wrapper struct itself. */
     Py_TYPE(cache)->tp_free((PyObject *) cache);
 }
 
