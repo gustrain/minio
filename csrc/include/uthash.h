@@ -229,7 +229,7 @@ do {                                                                            
     (head)->hh.tbl->log2_num_buckets = log2_n_buckets;                           \
     (head)->hh.tbl->hho = (char*)(&(head)->hh) - (char*)(head);                  \
     (head)->hh.tbl->buckets = (UT_hash_bucket*)uthash_malloc(                    \
-        HASH_INITIAL_NUM_BUCKETS * sizeof(struct UT_hash_bucket));               \
+        (head)->hh.tbl->num_buckets * sizeof(struct UT_hash_bucket));            \
     (head)->hh.tbl->signature = HASH_SIGNATURE;                                  \
     if (!(head)->hh.tbl->buckets) {                                              \
       HASH_RECORD_OOM(oomed);                                                    \
