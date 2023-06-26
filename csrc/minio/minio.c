@@ -193,6 +193,8 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       }
       ALT_DEBUG_LOG("pid %d\n", getpid());
       ALT_DEBUG_LOG("pid %d cache->ht = 0x%lx\n", getpid(), cache->ht);
+      ALT_DEBUG_LOG("pid %d filepath = %s\n", getpid(), filepath);
+      ALT_DEBUG_LOG("pid %d entry = 0x%lx\n", getpid(), entry);
       HASH_ADD_STR(cache->ht, filepath, entry);
       ALT_DEBUG_LOG("pid %d\n", getpid());
       pthread_mutex_unlock(&cache->meta_lock);
