@@ -190,13 +190,14 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       pthread_mutex_lock(&cache->meta_lock);
       hash_entry_t *entry = &cache->ht_entries[cache->n_ht_entries++];
       DEBUG_LOG("releasing entry &cache->meta_lock (pid %d)\n", getpid());
-      pthread_mutex_unlock(&cache->meta_lock);
       if (cache->n_ht_entries > cache->max_ht_entries) {
          STAT_INC(cache, n_fail);
+         pthread_mutex_unlock(&cache->meta_lock);
          return -ENOMEM;
       }
       ALT_DEBUG_LOG("pid %d\n", getpid());
       HASH_ADD_STR(cache->ht, filepath, entry);
+      pthread_mutex_unlock(&cache->meta_lock);
       ALT_DEBUG_LOG("pid %d\n", getpid());
 
       /* Acquire the writer lock before writing. */
