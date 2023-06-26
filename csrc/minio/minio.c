@@ -116,12 +116,14 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
       entry->size = size;
 
-      /* Copy data to the cache. */
+      /* Figure out where the data goes. */
       pthread_mutex_lock(&cache->meta_lock);
       entry->ptr = cache->data + cache->used;
-      memcpy(entry->ptr, data, size);
       cache->used += size;
       pthread_mutex_unlock(&cache->meta_lock);
+
+      /* Copy data to the cache. */
+      memcpy(entry->ptr, data, size);
       // pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);
