@@ -156,14 +156,14 @@ PyCache_flush(PyCache *self, PyObject *args, PyObject *kwds)
 {
     cache_flush(self->cache);
 
-    return PyLong_FromLong(0);
+    return PyLong_FromLong(0L);
 }
 
 /* PyCache method to get the cache's "size" field. */
 static PyObject *
 PyCache_get_size(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    return PyLong_FromLong(self->cache->size);
+    return PyLong_FromUnsignedLong(self->cache->size);
 }
 
 /* PyCache method to get the cache's "used" field. */
@@ -174,7 +174,7 @@ PyCache_get_used(PyCache *self, PyObject *args, PyObject *kwds)
     size_t used = self->cache->used;
     pthread_mutex_unlock(&self->cache->meta_lock);
 
-    return used;
+    return PyLong_FromUnsignedLong(used);
 }
 
 /* PyCache methods. */
