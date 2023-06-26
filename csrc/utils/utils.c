@@ -55,3 +55,10 @@ mmap_alloc(size_t size)
 
    return ptr;
 }
+
+/* Free memory allocated with mmap_alloc. */
+void
+mmap_free(void *ptr, size_t size)
+{
+   munmap(ptr, size);
+}
