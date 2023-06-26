@@ -130,7 +130,7 @@ mmap_alloc(size_t size)
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
-   ALT_DEBUG_LOG("\n");
+   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    if (cache->n_accs % 1000 == 0) {
       printf("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
@@ -138,7 +138,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 
    STAT_INC(cache, n_accs);
 
-   ALT_DEBUG_LOG("\n");
+   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
@@ -159,7 +159,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       return entry->size;
    }
 
-   ALT_DEBUG_LOG("\n");
+   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    /* Open the file in DIRECT mode. */
    int fd = open(filepath, O_RDONLY | __O_DIRECT);
@@ -168,7 +168,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       return -ENOENT;
    }
 
-   ALT_DEBUG_LOG("\n");
+   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    /* Ensure the size of the file is OK. */
    size_t size = lseek(fd, 0L, SEEK_END);
@@ -179,7 +179,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    }
    lseek(fd, 0L, SEEK_SET);
 
-   ALT_DEBUG_LOG("\n");
+   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    /* Read into data and cache the data if it'll fit. */
    read(fd, data, (size | 0xFFF) + 1);
@@ -195,9 +195,9 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          STAT_INC(cache, n_fail);
          return -ENOMEM;
       }
-      ALT_DEBUG_LOG("\n");
+      ALT_DEBUG_LOG("pid %d\n", getpid());
       HASH_ADD_STR(cache->ht, filepath, entry);
-      ALT_DEBUG_LOG("\n");
+      ALT_DEBUG_LOG("pid %d\n", getpid());
 
       /* Acquire the writer lock before writing. */
       DEBUG_LOG("acquiring entry %s WRITE lock (pid %d)\n", filepath, getpid());
@@ -207,7 +207,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
       entry->size = size;
 
-      ALT_DEBUG_LOG("\n");
+      ALT_DEBUG_LOG("pid %d\n", getpid());
 
       /* Copy data to the cache. */
       DEBUG_LOG("acquiring entry &cache->meta_lock (pid %d)\n", getpid());
@@ -220,15 +220,15 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       DEBUG_LOG("releasing entry %s WRITE lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_unlock(&entry->rwlock);
 
-      ALT_DEBUG_LOG("\n");
+      ALT_DEBUG_LOG("pid %d\n", getpid());
 
       STAT_INC(cache, n_miss_cold);
    } else {
-      ALT_DEBUG_LOG("\n");
+      ALT_DEBUG_LOG("pid %d\n", getpid());
       STAT_INC(cache, n_miss_capacity);
    }
 
-   ALT_DEBUG_LOG("\n");
+   ALT_DEBUG_LOG("pid %d\n", getpid());
 
    return size;
 }
