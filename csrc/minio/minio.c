@@ -44,7 +44,7 @@
 
 #define DEBUG 0
 #define DEBUG_LOG(fmt, ...) \
-    do { if (DEBUG) fDEBUG_LOG(stderr, "[%8s:%-5d] " fmt, __FILE__, \
+    do { if (DEBUG) DEBUG_LOG(stderr, "[%8s:%-5d] " fmt, __FILE__, \
                             __LINE__, ## __VA_ARGS__); } while (0)
 
 /* ------------------------ */

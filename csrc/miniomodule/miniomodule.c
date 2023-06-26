@@ -80,7 +80,7 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     /* Initialize the cache. */
-    int status = cache_init(&cache->cache, size, POLICY_MINIO);
+    int status = cache_init(cache->cache, size, POLICY_MINIO);
     if (status < 0) {
         switch (status) {
             case -ENOMEM:
@@ -124,10 +124,10 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
     }
 
     /* Get the file contents. */
-    ssize_t size = cache_read(&self->cache,
-                             filepath,
-                             self->temp,
-                             self->max_file_size);
+    ssize_t size = cache_read(self->cache,
+                              filepath,
+                              self->temp,
+                              self->max_file_size);
     if (size < 0l) {
         switch (size) {
             case -EINVAL:
@@ -154,7 +154,7 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
 static PyObject *
 PyCache_flush(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    cache_flush(&self->cache);
+    cache_flush(self->cache);
 
     return PyLong_FromLong(0);
 }
