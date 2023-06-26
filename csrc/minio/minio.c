@@ -213,13 +213,13 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    }
 
    /* Get log2 of the number of entries. */
-   int n_ht_entries_copy = cache->n_ht_entries;
+   int n_ht_entries_copy = cache->max_ht_entries;
    int n_ht_entries_log2 = 0;
    while (n_ht_entries_copy >>= 1) ++n_ht_entries_log2;
 
    ALT_DEBUG_LOG("cache->ht: %p, cache->n_ht_entries: %lu, n_ht_entries_log2: %d", cache->ht, cache->n_ht_entries, n_ht_entries_log2);
 
-   HASH_MAKE_TABLE(hh, cache->ht, 0, cache->n_ht_entries, n_ht_entries_log2);
+   HASH_MAKE_TABLE(hh, cache->ht, 0, cache->max_ht_entries, n_ht_entries_log2);
 
    /* Set up each of the HT entries. */
    for (size_t i = 0; i < cache->max_ht_entries; i++) {
