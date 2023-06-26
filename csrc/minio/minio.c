@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <pthread.h>
 
 #include "../include/uthash.h"
 

@@ -25,7 +25,8 @@
 #include <Python.h>
 
 #include "../minio/minio.h"
-#include "stdlib.h"
+#include <stdlib.h>
+#include <pthread.h>
 
 #define BLOCK_SIZE (4096)
 
