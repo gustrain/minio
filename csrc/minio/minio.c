@@ -99,7 +99,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Acquire an entry. */
-      // pthread_mutex_lock(&cache->meta_lock);
+      pthread_mutex_lock(&cache->meta_lock);
       hash_entry_t *entry = &cache->ht_entries[cache->n_ht_entries++];
       if (cache->n_ht_entries > cache->max_ht_entries) {
          STAT_INC(cache, n_fail);
@@ -107,7 +107,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          return -ENOMEM;
       }
       HASH_ADD_STR(cache->ht, filepath, entry);
-      // pthread_mutex_unlock(&cache->meta_lock);
+      pthread_mutex_unlock(&cache->meta_lock);
 
       /* Acquire the writer lock before writing. */
       // pthread_rwlock_wrlock(&entry->rwlock);
@@ -140,7 +140,7 @@ cache_flush(cache_t *cache)
 {
    /* Acquiring the meta lock will prevent N_HT_ENTRIES changing, so using this
       value as the HT iterator is safe. */
-   // pthread_mutex_lock(&cache->meta_lock);
+   pthread_mutex_lock(&cache->meta_lock);
    size_t old_n_entries = cache->n_ht_entries;
 
    /* Acquire every entry lock. */
@@ -158,7 +158,7 @@ cache_flush(cache_t *cache)
       // pthread_rwlock_unlock(&cache->ht_entries[i].rwlock);
    }
 
-   // pthread_mutex_unlock(&cache->meta_lock);
+   pthread_mutex_unlock(&cache->meta_lock);
 }
 
 /* Initialize a cache CACHE with SIZE bytes and POLICY replacement policy. On
