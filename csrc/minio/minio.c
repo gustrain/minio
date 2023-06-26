@@ -55,8 +55,6 @@
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
-   printf("%lu\n", cache->n_accs);
-   DEBUG_LOG("%lu\n", cache->n_accs);
    if (cache->n_accs % 1000 == 0) {
       DEBUG_LOG("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
    }
@@ -101,15 +99,15 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Acquire an entry. */
-      // pthread_mutex_lock(&cache->meta_lock);
+      pthread_mutex_lock(&cache->meta_lock);
       hash_entry_t *entry = &cache->ht_entries[cache->n_ht_entries++];
       if (cache->n_ht_entries > cache->max_ht_entries) {
          STAT_INC(cache, n_fail);
-         // pthread_mutex_unlock(&cache->meta_lock);
+         pthread_mutex_unlock(&cache->meta_lock);
          return -ENOMEM;
       }
       HASH_ADD_STR(cache->ht, filepath, entry);
-      // pthread_mutex_unlock(&cache->meta_lock);
+      pthread_mutex_unlock(&cache->meta_lock);
 
       /* Acquire the writer lock before writing. */
       // pthread_rwlock_wrlock(&entry->rwlock);
@@ -119,11 +117,11 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       entry->size = size;
 
       /* Copy data to the cache. */
-      // pthread_mutex_lock(&cache->meta_lock);
+      pthread_mutex_lock(&cache->meta_lock);
       entry->ptr = cache->data + cache->used;
       memcpy(entry->ptr, data, size);
       cache->used += size;
-      // pthread_mutex_unlock(&cache->meta_lock);
+      pthread_mutex_unlock(&cache->meta_lock);
       // pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);
@@ -140,7 +138,7 @@ cache_flush(cache_t *cache)
 {
    /* Acquiring the meta lock will prevent N_HT_ENTRIES changing, so using this
       value as the HT iterator is safe. */
-   // pthread_mutex_lock(&cache->meta_lock);
+   pthread_mutex_lock(&cache->meta_lock);
    size_t old_n_entries = cache->n_ht_entries;
 
    /* Acquire every entry lock. */
@@ -158,7 +156,7 @@ cache_flush(cache_t *cache)
       // pthread_rwlock_unlock(&cache->ht_entries[i].rwlock);
    }
 
-   // pthread_mutex_unlock(&cache->meta_lock);
+   pthread_mutex_unlock(&cache->meta_lock);
 }
 
 /* Initialize a cache CACHE with SIZE bytes and POLICY replacement policy. On
