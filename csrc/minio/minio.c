@@ -39,6 +39,13 @@
 
 #include "../include/uthash.h"
 
+#define CANARY_VALUE (0xD34DB33F)
+#define CHECK_INVARIANTS(cache)                 \
+do {                                            \
+   assert(cache->canary_1 == CANARY_VALUE);     \
+   assert(cache->canary_2 == CANARY_VALUE);     \
+} while (0)
+
 #define AVERAGE_FILE_SIZE (100 * 1024)
 
 #define STAT_INC(cache, field)                                          \
@@ -55,6 +62,8 @@
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
+   CHECK_INVARIANTS(cache);
+
    pthread_mutex_lock(&cache->stats_lock);
    if (cache->n_accs % 1000 == 0) {
       DEBUG_LOG("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
@@ -121,17 +130,22 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       /* Figure out where the data goes. */
       pthread_mutex_lock(&cache->meta_lock);
       entry->ptr = cache->data + cache->used;
+
       cache->used += size;
       pthread_mutex_unlock(&cache->meta_lock);
 
       /* Copy data to the cache. */
+      CHECK_INVARIANTS(cache);
       memcpy(entry->ptr, data, size);
+      CHECK_INVARIANTS(cache);
       pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);
    } else {
       STAT_INC(cache, n_miss_capacity);
    }
+
+   CHECK_INVARIANTS(cache);
 
    return size;
 }
@@ -172,6 +186,9 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    cache->size = size;
    cache->used = 0;
    cache->policy = policy;
+
+   cache->canary_1 = CANARY_VALUE;
+   cache->canary_2 = CANARY_VALUE;
 
    /* Zero initial stats. */
    cache->n_accs = 0;
