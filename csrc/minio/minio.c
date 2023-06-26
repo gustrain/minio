@@ -117,9 +117,9 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          return -ENOMEM;
       }
       ALT_DEBUG_LOG("pid %d\n", getpid());
-      ALT_DEBUG_LOG("pid %d cache->ht = 0x%lx\n", getpid(), cache->ht);
+      ALT_DEBUG_LOG("pid %d cache->ht = %p\n", getpid(), cache->ht);
       ALT_DEBUG_LOG("pid %d filepath = %s\n", getpid(), filepath);
-      ALT_DEBUG_LOG("pid %d entry = 0x%lx\n", getpid(), entry);
+      ALT_DEBUG_LOG("pid %d entry = %p\n", getpid(), entry);
       printf("BEFORE: %p\n", cache->ht);
       HASH_ADD_STR(cache->ht, filepath, entry);
       printf("AFTER: %p\n", cache->ht);
@@ -201,11 +201,14 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
 
    /* Initialize the hash table. Allocate more entries than we'll likely need,
       since file size may vary, and entries are relatively small. */
-   cache->ht = NULL;
    cache->n_ht_entries = 0;
    cache->max_ht_entries = 2 * (size / AVERAGE_FILE_SIZE);
    cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
    if ((cache->ht_entries = mmap_alloc(cache->ht_size)) == NULL) {
+      return -ENOMEM;
+   }
+   if ((cache->ht = mmap_alloc(sizeof(hash_entry_t))) == NULL) {
+      mmap_free(cache->ht_entries, cache->ht_size);
       return -ENOMEM;
    }
 
@@ -225,7 +228,8 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    /* Allocate the cache's memory, and ensure it's 8-byte aligned so that direct
       IO will work properly. */
    if ((cache->data = mmap_alloc(cache->size)) == NULL) {
-      munmap(cache->ht_entries, cache->ht_size);
+      mmap_free(cache->ht_entries, cache->ht_size);
+      mmap_free(cache->ht, sizeof(hash_entry_t));
       return -ENOMEM;
    }
 
