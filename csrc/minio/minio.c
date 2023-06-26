@@ -202,7 +202,8 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    /* Initialize the hash table. Allocate more entries than we'll likely need,
       since file size may vary, and entries are relatively small. */
    cache->n_ht_entries = 0;
-   cache->max_ht_entries = 2 * (size / AVERAGE_FILE_SIZE);
+   cache->max_ht_entries = (2 * size) / AVERAGE_FILE_SIZE;
+   assert(cache->max_ht_entries > 0);
    cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
    if ((cache->ht_entries = mmap_alloc(cache->ht_size)) == NULL) {
       return -ENOMEM;
@@ -213,13 +214,13 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
    }
 
    /* Get log2 of the number of entries. */
-   int n_ht_entries_copy = cache->max_ht_entries;
-   int n_ht_entries_log2 = 0;
-   while (n_ht_entries_copy >>= 1) ++n_ht_entries_log2;
+   int max_ht_entries_copy = cache->max_ht_entries;
+   int max_ht_entries_log2 = 0;
+   while (max_ht_entries_copy >>= 1) ++max_ht_entries_log2;
 
-   ALT_DEBUG_LOG("cache->ht: %p, cache->n_ht_entries: %lu, n_ht_entries_log2: %d", cache->ht, cache->n_ht_entries, n_ht_entries_log2);
+   ALT_DEBUG_LOG("cache->ht: %p, cache->max_ht_entries: %lu, max_ht_entries_log2: %d", cache->ht, cache->max_ht_entries, max_ht_entries_log2);
 
-   HASH_MAKE_TABLE(hh, cache->ht, 0, cache->max_ht_entries, n_ht_entries_log2);
+   HASH_MAKE_TABLE(hh, cache->ht, 0, cache->max_ht_entries, max_ht_entries_log2);
 
    /* Set up each of the HT entries. */
    for (size_t i = 0; i < cache->max_ht_entries; i++) {
