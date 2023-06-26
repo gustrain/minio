@@ -30,7 +30,7 @@
     do { if (DEBUG) fprintf(stderr, "[%8s:%-5d] " fmt, __FILE__, \
                             __LINE__, ## __VA_ARGS__); } while (0)
 
-#define ALT_DEBUG 1
+#define ALT_DEBUG 0
 #define ALT_DEBUG_LOG(fmt, ...) \
     do { if (ALT_DEBUG) fprintf(stderr, "[%8s:%-5d] " fmt, __FILE__, \
                                 __LINE__, ## __VA_ARGS__); } while (0)
