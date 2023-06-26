@@ -99,7 +99,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    close(fd);
    if (size <= cache->size - cache->used) {
       /* Acquire an entry. */
-      pthread_mutex_lock(&cache->meta_lock);
+      // pthread_mutex_lock(&cache->meta_lock);
       hash_entry_t *entry = &cache->ht_entries[cache->n_ht_entries++];
       if (cache->n_ht_entries > cache->max_ht_entries) {
          STAT_INC(cache, n_fail);
@@ -107,7 +107,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          return -ENOMEM;
       }
       HASH_ADD_STR(cache->ht, filepath, entry);
-      pthread_mutex_unlock(&cache->meta_lock);
+      // pthread_mutex_unlock(&cache->meta_lock);
 
       /* Acquire the writer lock before writing. */
       // pthread_rwlock_wrlock(&entry->rwlock);
@@ -117,11 +117,11 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       entry->size = size;
 
       /* Copy data to the cache. */
-      // pthread_mutex_lock(&cache->meta_lock);
+      pthread_mutex_lock(&cache->meta_lock);
       entry->ptr = cache->data + cache->used;
       memcpy(entry->ptr, data, size);
       cache->used += size;
-      // pthread_mutex_unlock(&cache->meta_lock);
+      pthread_mutex_unlock(&cache->meta_lock);
       // pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);
