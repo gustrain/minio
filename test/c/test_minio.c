@@ -85,8 +85,9 @@ bool
 verify_integrity(char *filepath, uint8_t *data, size_t size)
 {
     /* Read a fresh copy of the data from storage. */
-    uint8_t *baseline;// = malloc(size);
-    assert(posix_memalign((void **) &baseline, BLOCK_SIZE, size) == 0);
+    printf("%lu size\n", size);
+    uint8_t *baseline = malloc(size);
+    assert(baseline != NULL);
     int fd = open(filepath, O_RDONLY);
     read(fd, baseline, size);
 
