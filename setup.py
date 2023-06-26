@@ -20,5 +20,6 @@ setup(name = 'MinIO Cache',
       license = 'MIT',
       ext_modules = [
             Extension('minio', sources = ['csrc/miniomodule/miniomodule.c',
-                                          'csrc/minio/minio.c'])
+                                          'csrc/minio/minio.c',
+                                          'csrc/utils/utils.c'])
       ])

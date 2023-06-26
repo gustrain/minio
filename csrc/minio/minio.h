@@ -82,7 +82,6 @@ typedef struct {
 } cache_t;
 
 
-void *mmap_alloc(size_t size);
 ssize_t cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size);
 void cache_flush(cache_t *cache);
 int cache_init(cache_t *cache, size_t size, policy_t policy);

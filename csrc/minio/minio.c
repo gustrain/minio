@@ -24,6 +24,7 @@
 #define _GNU_SOURCE
 
 #include "minio.h"
+#include "../utils/utils.h"
 
 #include <string.h>
 #include <errno.h>
@@ -34,93 +35,17 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/mman.h>
 #include <pthread.h>
 
 #include "../include/uthash.h"
 
-/* ---------------- */
-/*   DEBUG MACROS   */
-/* ---------------- */
-
-#define DEBUG 0
-#define DEBUG_LOG(fmt, ...) \
-    do { if (DEBUG) fprintf(stderr, "[%8s:%-5d] " fmt, __FILE__, \
-                            __LINE__, ## __VA_ARGS__); } while (0)
-
-#define ALT_DEBUG 1
-#define ALT_DEBUG_LOG(fmt, ...) \
-    do { if (ALT_DEBUG) fprintf(stderr, "[%8s:%-5d] " fmt, __FILE__, \
-                                __LINE__, ## __VA_ARGS__); } while (0)
-
-/* ------------------------ */
-/*   REPLACEMENT POLICIES   */
-/* ------------------------ */
-
-typedef uint64_t policy_func_t(cache_t *, void *, size_t);
-
-/* FIFO cache replacement policy. */
-static uint64_t
-policy_FIFO(cache_t *cache, void *item, size_t size)
-{
-   return -1;
-}
-
-/* MinIO cache replacement policy. */
-static uint64_t
-policy_MINIO(cache_t *cache, void *item, size_t size)
-{
-   return -1;
-}
-
-/* Policy table converts from policy_t enum to policy function. */
-__attribute__ ((unused))
-static policy_func_t *policy_table[N_POLICIES] = {
-   policy_FIFO,
-   policy_MINIO
-};
-
-
-/* ----------------- */
-/*   SHARED MEMORY   */
-/* ----------------- */
-
 #define AVERAGE_FILE_SIZE (100 * 1024)
-
-/* Allocate shared, page-locked memory, using an anonymous mmap. If this process
-   forks, and all "shared" state was allocated using this function, everything
-   will behave properly, as if we're synchronizing threads.
-   
-   Returns a pointer to a SIZE-byte region of memory on success, and returns
-   NULL on failure. */
-void *
-mmap_alloc(size_t size)
-{
-   /* Allocate SIZE bytes of page-aligned memory in an anonymous shared mmap. */
-   assert(size > 0);
-   void *ptr = mmap(NULL, size,
-                    PROT_READ | PROT_WRITE,
-                    MAP_ANONYMOUS | MAP_SHARED | MAP_POPULATE,
-                    -1, 0);
-
-   /* Lock this region. */
-   if (mlock(ptr, size) != 0) {
-      /* Don't allow a double failure. */
-      assert(munmap(ptr, size) == 0);
-      return NULL;
-   }
-
-   return ptr;
-}
-
-/* ------------- */
-/*   INTERFACE   */
-/* ------------- */
 
 #define STAT_INC(cache, field)                                          \
          pthread_mutex_lock(&cache->stats_lock);                        \
          cache->field++;                                                \
          pthread_mutex_unlock(&cache->stats_lock)
+
 
 /* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
    filesystem at FILEPATH. On failure returns ERRNO code with negative value,
