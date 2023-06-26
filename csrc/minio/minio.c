@@ -42,9 +42,9 @@
 #define AVERAGE_FILE_SIZE (100 * 1024)
 
 #define STAT_INC(cache, field)                                          \
-         pthread_mutex_lock(&cache->stats_lock);                        \
-         cache->field++;                                                \
-         pthread_mutex_unlock(&cache->stats_lock)
+         cache->field++
+         // pthread_mutex_lock(&cache->stats_lock);                        
+         // pthread_mutex_unlock(&cache->stats_lock)
 
 
 /* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
