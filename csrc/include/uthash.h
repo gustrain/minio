@@ -755,11 +755,14 @@ do {                                                                            
 /* iterate over items in a known bucket to find desired item */
 #define HASH_FIND_IN_BKT(tbl,hh,head,keyptr,keylen_in,hashval,out)               \
 do {                                                                             \
+  ALT_DEBUG_LOG("HASH_FIND_IN_BKT\n");                                           \
   if ((head).hh_head != NULL) {                                                  \
+    ALT_DEBUG_LOG("HASH_FIND_IN_BKT 1\n");                                       \
     DECLTYPE_ASSIGN(out, ELMT_FROM_HH(tbl, (head).hh_head));                     \
   } else {                                                                       \
     (out) = NULL;                                                                \
   }                                                                              \
+  ALT_DEBUG_LOG("HASH_FIND_IN_BKT 2\n");                                         \
   while ((out) != NULL) {                                                        \
     if ((out)->hh.hashv == (hashval) && (out)->hh.keylen == (keylen_in)) {       \
       if (HASH_KEYCMP((out)->hh.key, keyptr, keylen_in) == 0) {                  \
@@ -772,6 +775,7 @@ do {                                                                            
       (out) = NULL;                                                              \
     }                                                                            \
   }                                                                              \
+  ALT_DEBUG_LOG("HASH_FIND_IN_BKT 3\n");                                         \
 } while (0)
 
 /* add an item to a bucket  */
