@@ -196,6 +196,8 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          return -ENOMEM;
       }
       ALT_DEBUG_LOG("pid %d\n", getpid());
+      ALT_DEBUG_LOG("pid %d -- cache %p\n", cache);
+      ALT_DEBUG_LOG("pid %d -- cache->ht %p\n", cache->ht);
       HASH_ADD_STR(cache->ht, filepath, entry);
       pthread_mutex_unlock(&cache->meta_lock);
       ALT_DEBUG_LOG("pid %d\n", getpid());
