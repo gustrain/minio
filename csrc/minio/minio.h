@@ -76,8 +76,10 @@ typedef struct {
     size_t n_fail;
 
     /* Synchronization. */
+    uint32_t        canary_1;
     pthread_mutex_t meta_lock;      /* Mutex protecting metadata (USED and
                                        N_HT_ENTRIES fields). */
+    uint32_t        canary_2;
     pthread_mutex_t stats_lock;     /* Mutex protecting statistics fields. */
 } cache_t;
 

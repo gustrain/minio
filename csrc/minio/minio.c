@@ -130,14 +130,13 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       /* Figure out where the data goes. */
       pthread_mutex_lock(&cache->meta_lock);
       entry->ptr = cache->data + cache->used;
-
+      CHECK_INVARIANTS(cache);
+      memcpy(entry->ptr, data, size);
+      CHECK_INVARIANTS(cache);
       cache->used += size;
       pthread_mutex_unlock(&cache->meta_lock);
 
       /* Copy data to the cache. */
-      CHECK_INVARIANTS(cache);
-      memcpy(entry->ptr, data, size);
-      CHECK_INVARIANTS(cache);
       pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);
