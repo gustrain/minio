@@ -1,7 +1,7 @@
 from distutils.core import setup, Extension
 
 MAJOR = 0
-MINOR = 0
+MINOR = 2
 MICRO = 0
 VERSION = '{}.{}.{}'.format(MAJOR, MINOR, MICRO)
 
@@ -20,5 +20,6 @@ setup(name = 'MinIO Cache',
       license = 'MIT',
       ext_modules = [
             Extension('minio', sources = ['csrc/miniomodule/miniomodule.c',
-                                          'csrc/minio/minio.c'])
+                                          'csrc/minio/minio.c',
+                                          'csrc/utils/utils.c'])
       ])

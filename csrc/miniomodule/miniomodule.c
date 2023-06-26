@@ -25,7 +25,8 @@
 #include <Python.h>
 
 #include "../minio/minio.h"
-#include "stdlib.h"
+#include <stdlib.h>
+#include <pthread.h>
 
 #define BLOCK_SIZE (4096)
 
@@ -34,7 +35,7 @@
 typedef struct {
     PyObject_HEAD
 
-    cache_t  cache;          /* MinIO cache. */
+    cache_t *cache;          /* MinIO cache. */
     size_t   max_file_size;  /* Max file size we allow in this cache. */
     uint8_t *temp;           /* MAX_FILE_SIZE bytes used for copying. */
 } PyCache;
@@ -45,12 +46,22 @@ PyCache_dealloc(PyObject *self)
 {
     PyCache *cache = (PyCache *) self;
 
-    /* Free the memory allocate for the cache region. */
-    if (cache->cache.data != NULL) {
-        free(cache->cache.data);
+    /* Free the shared memory allocated for the cache region. */
+    if (cache->cache->data != NULL) {
+        munmap(cache->cache->data, cache->cache->size);
     }
 
-    /* Free the cache struct itself. */
+    /* Free the memory allocated for the copy region. */
+    if (cache->temp != NULL) {
+        free(cache->temp);
+    }
+
+    /* Free the shared memory allocated for the cache struct. */
+    if (cache->cache != NULL) {
+        munmap(cache->cache, sizeof(cache_t));
+    }
+
+    /* Free the cache wrapper struct itself. */
     Py_TYPE(cache)->tp_free((PyObject *) cache);
 }
 
@@ -68,6 +79,9 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    /* Set up the cache struct as shared memory. */
+    cache->cache = mmap_alloc(sizeof(cache_t));
+
     /* Set up the copy area. */
     cache->max_file_size = max_file_size;
     if (posix_memalign((void **) &cache->temp, BLOCK_SIZE, max_file_size) != 0) {
@@ -77,7 +91,7 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     /* Initialize the cache. */
-    int status = cache_init(&cache->cache, size, POLICY_MINIO);
+    int status = cache_init(cache->cache, size, POLICY_MINIO);
     if (status < 0) {
         switch (status) {
             case -ENOMEM:
@@ -121,10 +135,10 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
     }
 
     /* Get the file contents. */
-    ssize_t size = cache_read(&self->cache,
-                             filepath,
-                             self->temp,
-                             self->max_file_size);
+    ssize_t size = cache_read(self->cache,
+                              filepath,
+                              self->temp,
+                              self->max_file_size);
     if (size < 0l) {
         switch (size) {
             case -EINVAL:
@@ -151,23 +165,27 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
 static PyObject *
 PyCache_flush(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    cache_flush(&self->cache);
+    cache_flush(self->cache);
 
-    return PyLong_FromLong(0);
+    return PyLong_FromLong(0L);
 }
 
 /* PyCache method to get the cache's "size" field. */
 static PyObject *
 PyCache_get_size(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    return PyLong_FromLong(self->cache.size);
+    return PyLong_FromUnsignedLong(self->cache->size);
 }
 
 /* PyCache method to get the cache's "used" field. */
 static PyObject *
 PyCache_get_used(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    return PyLong_FromLong(self->cache.used);
+    pthread_mutex_lock(&self->cache->meta_lock);
+    size_t used = self->cache->used;
+    pthread_mutex_unlock(&self->cache->meta_lock);
+
+    return PyLong_FromUnsignedLong(used);
 }
 
 /* PyCache methods. */

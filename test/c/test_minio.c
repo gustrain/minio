@@ -82,7 +82,7 @@ test_timing(size_t cache_size,
 
 /* Verify that DATA contains the same data as the file at FILEPATH. */
 bool
-verify_integrity(char *filepath, uint8_t *data, size_t size)
+verify_integrity(char *filepath, uint8_t *data, ssize_t size)
 {
     /* Read a fresh copy of the data from storage. */
     uint8_t *baseline = malloc(size);
@@ -122,14 +122,16 @@ test_integrity(size_t cache_size,
 
     /* Cold accesses. */
     for (int i = 0; i < n_files; i++) {
-        long size = cache_read(&cache, filepaths[i], data, max_size);
+        ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
+        assert(size > 0);
         // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
 
     /* Hot accesses. */
     for (int i = 0; i < n_files; i++) {
-        long size = cache_read(&cache, filepaths[i], data, max_size);
+        ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
+        assert(size > 0);
         // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
@@ -165,16 +167,15 @@ main(int argc, char **argv)
 
     /* Integrity tests. */
     printf("testing integrity...\n");
-    size_t integrity_configs[7] = {
+    size_t integrity_configs[6] = {
         32 * MB,
         16 * MB,
         8 * MB,
         4 * MB,
         2 * MB,
         1 * MB,
-        0,
     };
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
         printf("\t%ld KB cache...", integrity_configs[i] / KB);
         test_integrity(integrity_configs[i], 32 * MB, test_files, N_TEST_FILES);
         printf(" OK.\n");

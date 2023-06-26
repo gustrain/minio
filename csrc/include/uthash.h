@@ -26,9 +26,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define UTHASH_VERSION 2.3.0
 
-#include <string.h>   /* memcmp, memset, strlen */
-#include <stddef.h>   /* ptrdiff_t */
-#include <stdlib.h>   /* exit */
+#include <string.h>         /* memcmp, memset, strlen */
+#include <stddef.h>         /* ptrdiff_t */
+#include <stdlib.h>         /* exit */
+#include "../utils/utils.h" /* mmap_alloc */
 
 #if defined(HASH_DEFINE_OWN_STDINT) && HASH_DEFINE_OWN_STDINT
 /* This codepath is provided for backward compatibility, but I plan to remove it. */
@@ -75,10 +76,10 @@ do {                                                                            
 #endif
 
 #ifndef uthash_malloc
-#define uthash_malloc(sz) malloc(sz)      /* malloc fcn                      */
+#define uthash_malloc(sz) mmap_alloc(sz)  /* malloc fcn                      */
 #endif
 #ifndef uthash_free
-#define uthash_free(ptr,sz) free(ptr)     /* free fcn                        */
+#define uthash_free(ptr,sz) mmap_free(ptr, sz)  /* free fcn                  */
 #endif
 #ifndef uthash_bzero
 #define uthash_bzero(a,n) memset(a,'\0',n)
@@ -212,7 +213,7 @@ do {                                                                            
 #define HASH_BLOOM_BYTELEN 0U
 #endif
 
-#define HASH_MAKE_TABLE(hh,head,oomed)                                           \
+#define HASH_MAKE_TABLE(hh,head,oomed,n_buckets,log2_n_buckets)                  \
 do {                                                                             \
   (head)->hh.tbl = (UT_hash_table*)uthash_malloc(sizeof(UT_hash_table));         \
   if (!(head)->hh.tbl) {                                                         \
@@ -220,23 +221,23 @@ do {                                                                            
   } else {                                                                       \
     uthash_bzero((head)->hh.tbl, sizeof(UT_hash_table));                         \
     (head)->hh.tbl->tail = &((head)->hh);                                        \
-    (head)->hh.tbl->num_buckets = HASH_INITIAL_NUM_BUCKETS;                      \
-    (head)->hh.tbl->log2_num_buckets = HASH_INITIAL_NUM_BUCKETS_LOG2;            \
+    (head)->hh.tbl->num_buckets = n_buckets;                                     \
+    (head)->hh.tbl->log2_num_buckets = log2_n_buckets;                           \
     (head)->hh.tbl->hho = (char*)(&(head)->hh) - (char*)(head);                  \
     (head)->hh.tbl->buckets = (UT_hash_bucket*)uthash_malloc(                    \
-        HASH_INITIAL_NUM_BUCKETS * sizeof(struct UT_hash_bucket));               \
+        (head)->hh.tbl->num_buckets * sizeof(struct UT_hash_bucket));            \
     (head)->hh.tbl->signature = HASH_SIGNATURE;                                  \
     if (!(head)->hh.tbl->buckets) {                                              \
       HASH_RECORD_OOM(oomed);                                                    \
       uthash_free((head)->hh.tbl, sizeof(UT_hash_table));                        \
     } else {                                                                     \
       uthash_bzero((head)->hh.tbl->buckets,                                      \
-          HASH_INITIAL_NUM_BUCKETS * sizeof(struct UT_hash_bucket));             \
+          (head)->hh.tbl->num_buckets * sizeof(struct UT_hash_bucket));          \
       HASH_BLOOM_MAKE((head)->hh.tbl, oomed);                                    \
       IF_HASH_NONFATAL_OOM(                                                      \
         if (oomed) {                                                             \
           uthash_free((head)->hh.tbl->buckets,                                   \
-              HASH_INITIAL_NUM_BUCKETS*sizeof(struct UT_hash_bucket));           \
+              (head)->hh.tbl->num_buckets*sizeof(struct UT_hash_bucket));        \
           uthash_free((head)->hh.tbl, sizeof(UT_hash_table));                    \
         }                                                                        \
       )                                                                          \
@@ -359,7 +360,8 @@ do {                                                                            
   if (!(head)) {                                                                 \
     (add)->hh.next = NULL;                                                       \
     (add)->hh.prev = NULL;                                                       \
-    HASH_MAKE_TABLE(hh, add, _ha_oomed);                                         \
+    HASH_MAKE_TABLE(hh, add, _ha_oomed, HASH_INITIAL_NUM_BUCKETS,                \
+                    HASH_INITIAL_NUM_BUCKETS_LOG2);                              \
     IF_HASH_NONFATAL_OOM( if (!_ha_oomed) { )                                    \
       (head) = (add);                                                            \
     IF_HASH_NONFATAL_OOM( } )                                                    \
@@ -405,7 +407,8 @@ do {                                                                            
   if (!(head)) {                                                                 \
     (add)->hh.next = NULL;                                                       \
     (add)->hh.prev = NULL;                                                       \
-    HASH_MAKE_TABLE(hh, add, _ha_oomed);                                         \
+    HASH_MAKE_TABLE(hh, add, _ha_oomed, HASH_INITIAL_NUM_BUCKETS,                \
+                    HASH_INITIAL_NUM_BUCKETS_LOG2);                              \
     IF_HASH_NONFATAL_OOM( if (!_ha_oomed) { )                                    \
       (head) = (add);                                                            \
     IF_HASH_NONFATAL_OOM( } )                                                    \
@@ -777,15 +780,6 @@ do {                                                                            
     _ha_head->hh_head->hh_prev = (addhh);                                        \
   }                                                                              \
   _ha_head->hh_head = (addhh);                                                   \
-  if ((_ha_head->count >= ((_ha_head->expand_mult + 1U) * HASH_BKT_CAPACITY_THRESH)) \
-      && !(addhh)->tbl->noexpand) {                                              \
-    HASH_EXPAND_BUCKETS(addhh,(addhh)->tbl, oomed);                              \
-    IF_HASH_NONFATAL_OOM(                                                        \
-      if (oomed) {                                                               \
-        HASH_DEL_IN_BKT(head,addhh);                                             \
-      }                                                                          \
-    )                                                                            \
-  }                                                                              \
 } while (0)
 
 /* remove an item from a given bucket */
@@ -803,88 +797,6 @@ do {                                                                            
     (delhh)->hh_next->hh_prev = (delhh)->hh_prev;                                \
   }                                                                              \
 } while (0)
-
-/* Bucket expansion has the effect of doubling the number of buckets
- * and redistributing the items into the new buckets. Ideally the
- * items will distribute more or less evenly into the new buckets
- * (the extent to which this is true is a measure of the quality of
- * the hash function as it applies to the key domain).
- *
- * With the items distributed into more buckets, the chain length
- * (item count) in each bucket is reduced. Thus by expanding buckets
- * the hash keeps a bound on the chain length. This bounded chain
- * length is the essence of how a hash provides constant time lookup.
- *
- * The calculation of tbl->ideal_chain_maxlen below deserves some
- * explanation. First, keep in mind that we're calculating the ideal
- * maximum chain length based on the *new* (doubled) bucket count.
- * In fractions this is just n/b (n=number of items,b=new num buckets).
- * Since the ideal chain length is an integer, we want to calculate
- * ceil(n/b). We don't depend on floating point arithmetic in this
- * hash, so to calculate ceil(n/b) with integers we could write
- *
- *      ceil(n/b) = (n/b) + ((n%b)?1:0)
- *
- * and in fact a previous version of this hash did just that.
- * But now we have improved things a bit by recognizing that b is
- * always a power of two. We keep its base 2 log handy (call it lb),
- * so now we can write this with a bit shift and logical AND:
- *
- *      ceil(n/b) = (n>>lb) + ( (n & (b-1)) ? 1:0)
- *
- */
-#define HASH_EXPAND_BUCKETS(hh,tbl,oomed)                                        \
-do {                                                                             \
-  unsigned _he_bkt;                                                              \
-  unsigned _he_bkt_i;                                                            \
-  struct UT_hash_handle *_he_thh, *_he_hh_nxt;                                   \
-  UT_hash_bucket *_he_new_buckets, *_he_newbkt;                                  \
-  _he_new_buckets = (UT_hash_bucket*)uthash_malloc(                              \
-           sizeof(struct UT_hash_bucket) * (tbl)->num_buckets * 2U);             \
-  if (!_he_new_buckets) {                                                        \
-    HASH_RECORD_OOM(oomed);                                                      \
-  } else {                                                                       \
-    uthash_bzero(_he_new_buckets,                                                \
-        sizeof(struct UT_hash_bucket) * (tbl)->num_buckets * 2U);                \
-    (tbl)->ideal_chain_maxlen =                                                  \
-       ((tbl)->num_items >> ((tbl)->log2_num_buckets+1U)) +                      \
-       ((((tbl)->num_items & (((tbl)->num_buckets*2U)-1U)) != 0U) ? 1U : 0U);    \
-    (tbl)->nonideal_items = 0;                                                   \
-    for (_he_bkt_i = 0; _he_bkt_i < (tbl)->num_buckets; _he_bkt_i++) {           \
-      _he_thh = (tbl)->buckets[ _he_bkt_i ].hh_head;                             \
-      while (_he_thh != NULL) {                                                  \
-        _he_hh_nxt = _he_thh->hh_next;                                           \
-        HASH_TO_BKT(_he_thh->hashv, (tbl)->num_buckets * 2U, _he_bkt);           \
-        _he_newbkt = &(_he_new_buckets[_he_bkt]);                                \
-        if (++(_he_newbkt->count) > (tbl)->ideal_chain_maxlen) {                 \
-          (tbl)->nonideal_items++;                                               \
-          if (_he_newbkt->count > _he_newbkt->expand_mult * (tbl)->ideal_chain_maxlen) { \
-            _he_newbkt->expand_mult++;                                           \
-          }                                                                      \
-        }                                                                        \
-        _he_thh->hh_prev = NULL;                                                 \
-        _he_thh->hh_next = _he_newbkt->hh_head;                                  \
-        if (_he_newbkt->hh_head != NULL) {                                       \
-          _he_newbkt->hh_head->hh_prev = _he_thh;                                \
-        }                                                                        \
-        _he_newbkt->hh_head = _he_thh;                                           \
-        _he_thh = _he_hh_nxt;                                                    \
-      }                                                                          \
-    }                                                                            \
-    uthash_free((tbl)->buckets, (tbl)->num_buckets * sizeof(struct UT_hash_bucket)); \
-    (tbl)->num_buckets *= 2U;                                                    \
-    (tbl)->log2_num_buckets++;                                                   \
-    (tbl)->buckets = _he_new_buckets;                                            \
-    (tbl)->ineff_expands = ((tbl)->nonideal_items > ((tbl)->num_items >> 1)) ?   \
-        ((tbl)->ineff_expands+1U) : 0U;                                          \
-    if ((tbl)->ineff_expands > 1U) {                                             \
-      (tbl)->noexpand = 1;                                                       \
-      uthash_noexpand_fyi(tbl);                                                  \
-    }                                                                            \
-    uthash_expand_fyi(tbl);                                                      \
-  }                                                                              \
-} while (0)
-
 
 /* This is an adaptation of Simon Tatham's O(n log(n)) mergesort */
 /* Note that HASH_SORT assumes the hash handle name to be hh.
@@ -1004,7 +916,8 @@ do {                                                                            
           }                                                                      \
           if ((dst) == NULL) {                                                   \
             DECLTYPE_ASSIGN(dst, _elt);                                          \
-            HASH_MAKE_TABLE(hh_dst, dst, _hs_oomed);                             \
+            HASH_MAKE_TABLE(hh_dst, dst, _hs_oomed, HASH_INITIAL_NUM_BUCKETS,    \
+                            HASH_INITIAL_NUM_BUCKETS_LOG2);                      \
             IF_HASH_NONFATAL_OOM(                                                \
               if (_hs_oomed) {                                                   \
                 uthash_nonfatal_oom(_elt);                                       \
