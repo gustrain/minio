@@ -151,19 +151,16 @@ do {                                                                            
 
 #define HASH_VALUE(keyptr,keylen,hashv)                                          \
 do {                                                                             \
-  ALT_DEBUG_LOG("HASH_VALUE\n");                                                 \
   HASH_FUNCTION(keyptr, keylen, hashv);                                          \
 } while (0)
 
 #define HASH_FIND_BYHASHVALUE(hh,head,keyptr,keylen,hashval,out)                 \
 do {                                                                             \
   (out) = NULL;                                                                  \
-  ALT_DEBUG_LOG("HASH_FIND_BYHASHVALUE\n");                                      \
   if (head) {                                                                    \
     unsigned _hf_bkt;                                                            \
     HASH_TO_BKT(hashval, (head)->hh.tbl->num_buckets, _hf_bkt);                  \
     if (HASH_BLOOM_TEST((head)->hh.tbl, hashval) != 0) {                         \
-      ALT_DEBUG_LOG("IN THE IF STATEMENT\n");                                    \
       HASH_FIND_IN_BKT((head)->hh.tbl, hh, (head)->hh.tbl->buckets[ _hf_bkt ], keyptr, keylen, hashval, out); \
     }                                                                            \
   }                                                                              \
@@ -172,7 +169,6 @@ do {                                                                            
 #define HASH_FIND(hh,head,keyptr,keylen,out)                                     \
 do {                                                                             \
   (out) = NULL;                                                                  \
-  ALT_DEBUG_LOG("head: %p\n", head);                                             \
   if (head) {                                                                    \
     unsigned _hf_hashv;                                                          \
     HASH_VALUE(keyptr, keylen, _hf_hashv);                                       \
@@ -439,7 +435,6 @@ do {                                                                            
 
 #define HASH_TO_BKT(hashv,num_bkts,bkt)                                          \
 do {                                                                             \
-  ALT_DEBUG_LOG("HASH_TO_BKT\n");                                                \
   bkt = ((hashv) & ((num_bkts) - 1U));                                           \
 } while (0)
 
@@ -755,14 +750,11 @@ do {                                                                            
 /* iterate over items in a known bucket to find desired item */
 #define HASH_FIND_IN_BKT(tbl,hh,head,keyptr,keylen_in,hashval,out)               \
 do {                                                                             \
-  ALT_DEBUG_LOG("HASH_FIND_IN_BKT\n");                                           \
   if ((head).hh_head != NULL) {                                                  \
-    ALT_DEBUG_LOG("HASH_FIND_IN_BKT 1\n");                                       \
     DECLTYPE_ASSIGN(out, ELMT_FROM_HH(tbl, (head).hh_head));                     \
   } else {                                                                       \
     (out) = NULL;                                                                \
   }                                                                              \
-  ALT_DEBUG_LOG("HASH_FIND_IN_BKT 2\n");                                         \
   while ((out) != NULL) {                                                        \
     if ((out)->hh.hashv == (hashval) && (out)->hh.keylen == (keylen_in)) {       \
       if (HASH_KEYCMP((out)->hh.key, keyptr, keylen_in) == 0) {                  \
@@ -775,7 +767,6 @@ do {                                                                            
       (out) = NULL;                                                              \
     }                                                                            \
   }                                                                              \
-  ALT_DEBUG_LOG("HASH_FIND_IN_BKT 3\n");                                         \
 } while (0)
 
 /* add an item to a bucket  */
