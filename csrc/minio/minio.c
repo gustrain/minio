@@ -169,7 +169,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       printf("releasing entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_unlock(&cache->meta_lock);
       if (cache->n_ht_entries > cache->max_ht_entries) {
-         cache->n_fail++;
+         STAT_INC(cache, n_fail);
          return -ENOMEM;
       }
       HASH_ADD_STR(cache->ht, filepath, entry);
@@ -190,7 +190,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       cache->used += size;
       printf("releasing entry &cache->meta_lock (pid %d)\n", getpid());
       pthread_mutex_unlock(&cache->meta_lock);
-      printf("releasing entry %s READ lock (pid %d)\n", filepath, getpid());
+      printf("releasing entry %s WRITE lock (pid %d)\n", filepath, getpid());
       pthread_rwlock_unlock(&entry->rwlock);
 
       STAT_INC(cache, n_miss_cold);

@@ -34,7 +34,7 @@
 typedef struct {
     PyObject_HEAD
 
-    cache_t  cache;          /* MinIO cache. */
+    cache_t *cache;          /* MinIO cache. */
     size_t   max_file_size;  /* Max file size we allow in this cache. */
     uint8_t *temp;           /* MAX_FILE_SIZE bytes used for copying. */
 } PyCache;
@@ -46,8 +46,8 @@ PyCache_dealloc(PyObject *self)
     PyCache *cache = (PyCache *) self;
 
     /* Free the memory allocate for the cache region. */
-    if (cache->cache.data != NULL) {
-        free(cache->cache.data);
+    if (cache->cache->data != NULL) {
+        free(cache->cache->data);
     }
 
     /* Free the cache struct itself. */
@@ -67,6 +67,9 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_Exception, "missing/invalid argument");
         return -1;
     }
+
+    /* Set up the cache struct as shared memory. */
+    cache->cache = mmap_alloc(sizeof(cache_t));
 
     /* Set up the copy area. */
     cache->max_file_size = max_file_size;
@@ -160,14 +163,18 @@ PyCache_flush(PyCache *self, PyObject *args, PyObject *kwds)
 static PyObject *
 PyCache_get_size(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    return PyLong_FromLong(self->cache.size);
+    return PyLong_FromLong(self->cache->size);
 }
 
 /* PyCache method to get the cache's "used" field. */
 static PyObject *
 PyCache_get_used(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    return PyLong_FromLong(self->cache.used);
+    pthread_mutex_lock(&self->cache->meta_lock);
+    size_t used = self->cache->used;
+    pthread_mutex_unlock(&self->cache->meta_lock);
+
+    return used;
 }
 
 /* PyCache methods. */
