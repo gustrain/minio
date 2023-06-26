@@ -169,6 +169,7 @@ do {                                                                            
 #define HASH_FIND(hh,head,keyptr,keylen,out)                                     \
 do {                                                                             \
   (out) = NULL;                                                                  \
+  ALT_DEBUG_LOG("head: %p\n", head);                                             \
   if (head) {                                                                    \
     unsigned _hf_hashv;                                                          \
     HASH_VALUE(keyptr, keylen, _hf_hashv);                                       \
