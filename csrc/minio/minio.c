@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdatomic.h>
+#include <pthread.h>
 
 #include "../include/uthash.h"
 
@@ -53,7 +54,10 @@
    Note we use atomics to implement thread safe options because pthreads and
    traditional synchronization primitives are not safe to use with the Python
    interpreter, and may cause deadlock to occur, regardless of the correctness
-   of primitives' usage. */
+   of primitives' usage.
+   
+   It should be noted that the cache is only thread/process safe so long as the
+   cache entries are only written once (as is the case with MinIO). */
 ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
@@ -67,7 +71,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, filepath, entry);
    if (entry != NULL) {
-      /* Don't overflow the buffer. */                      /* SAFE IF CACHE IS READ-ONLY */
+      /* Don't overflow the buffer. */
       if (entry->size > max_size) {
          return -EINVAL;
       }
@@ -104,7 +108,10 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          return -ENOMEM;
       }
       hash_entry_t *entry = &cache->ht_entries[n];
-      HASH_ADD_STR(cache->ht, filepath, entry);                         /* ??? NOT YET SAFE */
+
+      pthread_spin_lock(&cache->ht_lock);
+      HASH_ADD_STR(cache->ht, filepath, entry);
+      pthread_spin_unlock(&cache->ht_lock);
 
       /* Note there is an implicit assumption that two threads/processes will
          not simultaneously attempt to access the same filepath for the first
@@ -134,8 +141,9 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 /* Clear the cache's hash table and reset used bytes to zero.
 
    Note this function is NOT thread safe, as safety cannot be ensured by the
-   use of atomics alone. Consequently, it must be ensured that the cache is not
-   being actively queried by other threads/processes when it is flushed. */
+   use of atomics alone, and enforcing safety over the update of all touched
+   fields in read would significantly increase the time the spinlock is held for
+   and thus potentially significantly decrease parallel read performance. */
 void
 cache_flush(cache_t *cache)
 {
@@ -175,6 +183,9 @@ cache_init(cache_t *cache, size_t size, policy_t policy)
       mmap_free(cache->ht_entries, cache->ht_size);
       return -ENOMEM;
    }
+
+   /* Synchronization initialization. */
+   pthread_spin_init(&cache->ht_lock, PTHREAD_PROCESS_SHARED);
 
    /* Get log2 of the number of entries. */
    int max_ht_entries_copy = cache->max_ht_entries;

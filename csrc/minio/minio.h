@@ -28,6 +28,7 @@
 
 #include "../include/uthash.h"
 #include <stdatomic.h>
+#include <pthread.h>
 #include <sys/mman.h>
 
 #define MAX_PATH_LENGTH 128
@@ -70,6 +71,9 @@ typedef struct {
     atomic_size_t n_miss_cold;
     atomic_size_t n_miss_capacity;
     atomic_size_t n_fail;
+
+    /* Synchronization. */
+    pthread_spinlock_t ht_lock;
 } cache_t;
 
 
