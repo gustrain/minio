@@ -166,6 +166,9 @@ main(int argc, char **argv)
         printf("cannot allocate e2\n");
         return 1;
     }
+    strncpy(entry_2->filepath, "debug debug debug 2222", MAX_PATH_LENGTH + 1);
+    entry_2->ptr = 54321;
+    entry_2->size = 99999;
 
     hash_entry_t *ht = mmap_alloc(sizeof(hash_entry_t));
     if (ht == NULL) {
@@ -177,12 +180,21 @@ main(int argc, char **argv)
     /* Insert item 1. */
     HASH_ADD_STR(ht, filepath, entry_1);
 
+    /* Insert item 2. */
+    HASH_ADD_STR(ht, filepath, entry_2);
+
 
     /* Read item 1. */
     hash_entry_t *test_read_1;
     HASH_FIND_STR(ht, "debug debug debug", test_read_1);
     
     printf("e1: %p\nt1: %p\nmatch? %d\n", entry_1, test_read_1, entry_1 == test_read_1);
+
+    /* Read item 2. */
+    hash_entry_t *test_read_2;
+    HASH_FIND_STR(ht, "debug debug debug 2222", test_read_2);
+    
+    printf("e2: %p\nt1: %p\nmatch? %d\n", entry_2, test_read_2, entry_2 == test_read_2);
 
 
 
