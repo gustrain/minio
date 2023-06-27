@@ -108,16 +108,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          return -ENOMEM;
       }
       hash_entry_t *entry = &cache->ht_entries[n];
-
-      pthread_spin_lock(&cache->ht_lock);
-      HASH_ADD_STR(cache->ht, filepath, entry);
-      pthread_spin_unlock(&cache->ht_lock);
-
-      /* Note there is an implicit assumption that two threads/processes will
-         not simultaneously attempt to access the same filepath for the first
-         time. For ML data-loader applications this is satisfied, since each
-         element is accessed only once per epoch, however this will present a
-         race condition in applications where this scenario can occur. */
+      printf("entry for %s (n = %d, entry = %p)\n", filepath, n, entry);
 
       /* Copy the filepath into the entry. */
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
@@ -129,6 +120,17 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 
       /* Copy data to the cache. */
       memcpy(entry->ptr, data, size);
+
+      /* Note there is an implicit assumption that two threads/processes will
+         not simultaneously attempt to access the same filepath for the first
+         time. For ML data-loader applications this is satisfied, since each
+         element is accessed only once per epoch, however this will present a
+         race condition in applications where this scenario can occur. */
+
+      /* Insert into hash table. */
+      pthread_spin_lock(&cache->ht_lock);
+      HASH_ADD_STR(cache->ht, filepath, entry);
+      pthread_spin_unlock(&cache->ht_lock);
 
       STAT_INC(cache, n_miss_cold);
    } else {
