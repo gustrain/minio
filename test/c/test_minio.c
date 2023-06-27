@@ -197,11 +197,6 @@ main(int argc, char **argv)
     printf("e2: %p\nt1: %p\nmatch? %d\n", entry_2, test_read_2, entry_2 == test_read_2);
 
 
-
-    return 0;
-
-
-
     char *test_files[N_TEST_FILES] = {
         "../test-images/2MB.bmp",
         "../test-images/4MB.bmp",
