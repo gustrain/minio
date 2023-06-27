@@ -27,6 +27,7 @@
 #include <stdlib.h>
 
 #include "../include/uthash.h"
+#include <stdatomic.h>
 #include <pthread.h>
 #include <sys/mman.h>
 
@@ -46,14 +47,10 @@ typedef struct {
     void   *ptr;                            /* Pointer to this file's data. */
     size_t  size;                           /* Size of file data in bytes. */
 
-    /* Synchronization. */
-    pthread_rwlock_t rwlock;                /* Reader/writer lock protecting
-                                               this entry. */
-
     UT_hash_handle hh;
 } hash_entry_t;
 
-/* Cache. */
+/* Cache. Atomics types are used to ensure thread safety. */
 typedef struct {
     /* Configuration. */
     policy_t policy;            /* Replacement policy. Only MinIO supported. */
@@ -62,23 +59,21 @@ typedef struct {
     size_t   max_ht_entries;    /* Maximum number of HT entries. */
 
     /* State. */
-    size_t        used;             /* Number of bytes cached. */
+    atomic_size_t used;             /* Number of bytes cached. */
     uint8_t      *data;             /* First byte of SIZE bytes of memory. */
     hash_entry_t *ht_entries;       /* Memory used for HT entries. */
-    size_t        n_ht_entries;     /* Current number of HT entries. */
+    atomic_size_t n_ht_entries;     /* Current number of HT entries. */
     hash_entry_t *ht;               /* Hash table, maps filename to data. */
 
     /* Statistics. */
-    size_t n_accs;
-    size_t n_hits;
-    size_t n_miss_cold;
-    size_t n_miss_capacity;
-    size_t n_fail;
+    atomic_size_t n_accs;
+    atomic_size_t n_hits;
+    atomic_size_t n_miss_cold;
+    atomic_size_t n_miss_capacity;
+    atomic_size_t n_fail;
 
     /* Synchronization. */
-    pthread_mutex_t meta_lock;      /* Mutex protecting metadata (USED and
-                                       N_HT_ENTRIES fields). */
-    pthread_mutex_t stats_lock;     /* Mutex protecting statistics fields. */
+    pthread_spinlock_t ht_lock;
 } cache_t;
 
 

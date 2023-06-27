@@ -181,9 +181,9 @@ PyCache_get_size(PyCache *self, PyObject *args, PyObject *kwds)
 static PyObject *
 PyCache_get_used(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    pthread_mutex_lock(&self->cache->meta_lock);
+    // pthread_mutex_lock(&self->cache->meta_lock);
     size_t used = self->cache->used;
-    pthread_mutex_unlock(&self->cache->meta_lock);
+    // pthread_mutex_unlock(&self->cache->meta_lock);
 
     return PyLong_FromUnsignedLong(used);
 }
