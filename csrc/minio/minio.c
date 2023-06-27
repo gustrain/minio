@@ -69,7 +69,6 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, filepath, entry);
-   printf("Entry @ \"%s\": %p\n", filepath, entry);
    if (entry != NULL) {
       /* Don't overflow the buffer. */
       if (entry->size > max_size) {
@@ -108,14 +107,13 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
          return -ENOMEM;
       }
       hash_entry_t *entry = &cache->ht_entries[n];
-      printf("entry for %s (n = %d, entry = %p)\n", filepath, n, entry);
 
       /* Copy the filepath into the entry. */
       strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
-      entry->size = size;
 
       /* Figure out where the data goes. Note that the atomic_X functions return
          the pre-operation value. */
+      entry->size = size;
       entry->ptr = cache->data + atomic_fetch_add(&cache->used, size);
 
       /* Copy data to the cache. */

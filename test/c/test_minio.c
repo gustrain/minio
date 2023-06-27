@@ -149,54 +149,6 @@ get_aligned(uint8_t *addr, int block_size)
 int
 main(int argc, char **argv)
 {
-    uint8_t d1[1024];
-    uint8_t d2[1024];
-
-    hash_entry_t *entry_1 = mmap_alloc(sizeof(hash_entry_t));
-    if (entry_1 == NULL) {
-        printf("cannot allocate e1\n");
-        return 1;
-    }
-    strncpy(entry_1->filepath, "debug debug debug", MAX_PATH_LENGTH + 1);
-    entry_1->ptr = 12345;
-    entry_1->size = 77777;
-
-    hash_entry_t *entry_2 = mmap_alloc(sizeof(hash_entry_t));
-    if (entry_2 == NULL) {
-        printf("cannot allocate e2\n");
-        return 1;
-    }
-    strncpy(entry_2->filepath, "debug debug debug 2222", MAX_PATH_LENGTH + 1);
-    entry_2->ptr = 54321;
-    entry_2->size = 99999;
-
-    hash_entry_t *ht = mmap_alloc(sizeof(hash_entry_t));
-    if (ht == NULL) {
-        printf("cannot allocate ht\n");
-        return 1;
-    }
-    HASH_MAKE_TABLE(hh, ht, 0, 16, 4);
-
-    /* Insert item 1. */
-    HASH_ADD_STR(ht, filepath, entry_1);
-
-    /* Insert item 2. */
-    HASH_ADD_STR(ht, filepath, entry_2);
-
-
-    /* Read item 1. */
-    hash_entry_t *test_read_1;
-    HASH_FIND_STR(ht, "debug debug debug", test_read_1);
-    
-    printf("e1: %p\nt1: %p\nmatch? %d\n", entry_1, test_read_1, entry_1 == test_read_1);
-
-    /* Read item 2. */
-    hash_entry_t *test_read_2;
-    HASH_FIND_STR(ht, "debug debug debug 2222", test_read_2);
-    
-    printf("e2: %p\nt1: %p\nmatch? %d\n", entry_2, test_read_2, entry_2 == test_read_2);
-
-
     char *test_files[N_TEST_FILES] = {
         "../test-images/2MB.bmp",
         "../test-images/4MB.bmp",
