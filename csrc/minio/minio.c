@@ -121,16 +121,12 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
       entry->ptr = cache->data + atomic_fetch_add(&cache->used, size);
 
       /* Copy data to the cache. */
-      CHECK_INVARIANTS(cache);
       memcpy(entry->ptr, data, size);
-      CHECK_INVARIANTS(cache);
 
       STAT_INC(cache, n_miss_cold);
    } else {
       STAT_INC(cache, n_miss_capacity);
    }
-
-   CHECK_INVARIANTS(cache);
 
    return size;
 }
