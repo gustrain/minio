@@ -62,7 +62,7 @@ ssize_t
 cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
 {
    size_t n_accs = STAT_INC(cache, n_accs);
-   if (n_accs % 1 == 0) {
+   if (n_accs % 1000 == 0) {
       DEBUG_LOG("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
    }
 
