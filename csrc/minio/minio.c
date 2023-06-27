@@ -69,6 +69,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    /* Check if the file is cached. */
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, filepath, entry);
+   printf("Entry @ \"%s\": %p", filepath, entry);
    if (entry != NULL) {
       /* Don't overflow the buffer. */
       if (entry->size > max_size) {
