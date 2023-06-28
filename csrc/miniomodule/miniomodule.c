@@ -158,7 +158,17 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    return PyTuple_Pack(2, PyBytes_FromStringAndSize((char *) self->temp, size), PyLong_FromLong(size));
+    PyObject *bytes = PyBytes_FromStringAndSize((char *) self->temp, size);
+    PyObject *size_ = PyLong_FromLong(size);
+    PyObject *out = PyTuple_Pack(2, bytes, size_);
+
+    /* Because PyTuple_Pack increments the reference counter for all inputs,
+       we must decrement the refcounts to prevent a leak where the count is >1
+       when we return. */
+    Py_DECREF(bytes);
+    Py_DECREF(size_);
+
+    return out;
 }
 
 /* PyCache method to flush the cache. */
