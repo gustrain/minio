@@ -99,7 +99,8 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    /* Read into data and cache the data if it'll fit. */
    read(fd, data, (size | 0xFFF) + 1);
    close(fd);
-   if (size <= (cache->size - cache->used) && size <= cache->max_item_size) {
+   if (size <= cache->size - cache->used
+       && (size <= cache->max_item_size || cache->max_item_size == 0)) {
       /* Acquire an entry. */
       size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
       if (n >= cache->max_ht_entries) {
