@@ -86,6 +86,12 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    /* If specified, the max usable item size must be <= max cacheable size. */
+    if (max_cacheable_file_size != 0 && max_cacheable_file_size > max_usable_file_size) {
+        PyErr_SetString(PyExc_Exception, "max_cacheable_file_size must be <= max_usable_file_size");
+        return -1;
+    }
+
     /* Set up the cache struct as shared memory. */
     cache->cache = mmap_alloc(sizeof(cache_t));
 
