@@ -99,7 +99,7 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    /* Read into data and cache the data if it'll fit. */
    read(fd, data, (size | 0xFFF) + 1);
    close(fd);
-   if (size <= cache->size - cache->used) {
+   if (size <= (cache->size - cache->used) && size <= cache->max_item_size) {
       /* Acquire an entry. */
       size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
       if (n >= cache->max_ht_entries) {
@@ -156,12 +156,13 @@ cache_flush(cache_t *cache)
 /* Initialize a cache CACHE with SIZE bytes and POLICY replacement policy. On
    success, 0 is returned. On failure, negative ERRNO value is returned. */
 int
-cache_init(cache_t *cache, size_t size, policy_t policy)
+cache_init(cache_t *cache, size_t size, size_t max_item_size, policy_t policy)
 {
    /* Cache configuration. */
    cache->size = size;
    cache->used = 0;
    cache->policy = policy;
+   cache->max_item_size = max_item_size;
 
    /* Zero initial stats. */
    cache->n_accs = 0;
