@@ -159,6 +159,8 @@ cache_flush(cache_t *cache)
 int
 cache_init(cache_t *cache, size_t size, size_t max_item_size, policy_t policy)
 {
+   DEBUG_LOG("max_item_size = %lu\n", max_item_size);
+
    /* Cache configuration. */
    cache->size = size;
    cache->used = 0;
