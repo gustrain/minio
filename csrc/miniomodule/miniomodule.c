@@ -48,6 +48,10 @@ static void
 PyCache_dealloc(PyObject *self)
 {
     PyCache *cache = (PyCache *) self;
+    printf("Self: %p\n");
+    if (cache == NULL) {
+        return;
+    }
 
     /* Free the shared memory allocated for the cache region. */
     if (cache->cache->data != NULL) {
@@ -103,6 +107,8 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_NoMemory();
         return -1;
     }
+
+    printf("Max cacheable file size: %lu\n", max_cacheable_file_size);
 
     /* Initialize the cache. */
     int status = cache_init(cache->cache, size, max_cacheable_file_size, POLICY_MINIO);
