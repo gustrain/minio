@@ -47,8 +47,8 @@ typedef struct {
 static void
 PyCache_dealloc(PyObject *self)
 {
+    printf("Self: %p\n", self);
     PyCache *cache = (PyCache *) self;
-    printf("Self: %p\n");
     if (cache == NULL) {
         return;
     }
