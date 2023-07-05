@@ -47,25 +47,27 @@ typedef struct {
 static void
 PyCache_dealloc(PyObject *self)
 {
-    printf("Self: %p\n", self);
     PyCache *cache = (PyCache *) self;
     if (cache == NULL) {
         return;
     }
+    printf("cache: %p\n", cache);
+    printf("cache->cache: %p\n", cache->cache);
 
-    /* Free the shared memory allocated for the cache region. */
-    if (cache->cache->data != NULL) {
-        munmap(cache->cache->data, cache->cache->size);
+    /* Only free memory in the cache struct if it's actually been allocated. */
+    if (cache->cache != NULL) {
+        /* Free the shared memory allocated for the cache region. */
+        if (cache->cache->data != NULL) {
+            munmap(cache->cache->data, cache->cache->size);
+        }
+        
+        /* Free the shared memory allocated for the cache struct. */
+        munmap(cache->cache, sizeof(cache_t));
     }
 
     /* Free the memory allocated for the copy region. */
     if (cache->temp != NULL) {
         free(cache->temp);
-    }
-
-    /* Free the shared memory allocated for the cache struct. */
-    if (cache->cache != NULL) {
-        munmap(cache->cache, sizeof(cache_t));
     }
 
     /* Free the cache wrapper struct itself. */
