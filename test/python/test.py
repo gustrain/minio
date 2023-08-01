@@ -109,12 +109,14 @@ def test_manual_methods(size: int,
     matches, mismatches = load_inspect_manual(cache, filepaths, data)
     if mismatches > 0:
         success = False
+    print("A")
 
     
     # Load the files for the second time (Mixed hits/capacity misses)
     matches, mismatches = load_inspect_manual(cache, filepaths, data)
     if mismatches > 0:
         success = False
+    print("B")
 
     return success
 
