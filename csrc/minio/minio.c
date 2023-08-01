@@ -98,6 +98,7 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
    if (entry == NULL) {
+      printf("foo\n");
       return -ENODATA;
    }
 
@@ -136,10 +137,10 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
    size_t bytes = 0;
    int status = cache_load(cache, path, data, &bytes, max_size);
    if (status < 0 && status != -ENODATA) {
-      return status;
+      return (ssize_t) status;
    } else {
       STAT_INC(cache, n_hits);
-      return bytes;
+      return (ssize_t) bytes;
    }
 
    /* Open the file in DIRECT mode. */
@@ -172,7 +173,7 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
       int status = cache_store(cache, path, data, size);
       if (status < 0) {
          STAT_INC(cache, n_fail);
-         return status;
+         return (ssize_t) status;
       }
       STAT_INC(cache, n_miss_cold);
    } else {

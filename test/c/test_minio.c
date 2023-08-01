@@ -124,7 +124,6 @@ test_integrity(size_t cache_size,
     for (int i = 0; i < n_files; i++) {
         ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
         assert(size > 0);
-        // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
 
@@ -132,7 +131,6 @@ test_integrity(size_t cache_size,
     for (int i = 0; i < n_files; i++) {
         ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
         assert(size > 0);
-        // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
 
@@ -182,6 +180,6 @@ main(int argc, char **argv)
     }
 
     printf("All tests OK.\n");
-    
+
     return EXIT_SUCCESS;
 }
