@@ -182,4 +182,6 @@ main(int argc, char **argv)
     }
 
     printf("All tests OK.\n");
+    
+    return EXIT_SUCCESS;
 }

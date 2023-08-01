@@ -233,7 +233,7 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
                               filepath,
                               self->temp,
                               self->max_usable_file_size);
-    if (size < 0l) {
+    if (size < 0) {
         switch (size) {
             case -EINVAL:
                 PyErr_SetString(PyExc_MemoryError, "insufficient buffer size");

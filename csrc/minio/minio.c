@@ -45,7 +45,7 @@
 #define STAT_INC(cache, field) atomic_fetch_add(&cache->field, 1)
 
 
-/* Check if PATH is cached in CACHE. Returns true if cached, else false. */
+/* Check if CACHE contains PATH. Returns true if cached, else false. */
 bool
 cache_contains(cache_t *cache, char *path)
 {
