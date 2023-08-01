@@ -156,7 +156,10 @@ PyCache_contains(PyCache *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    return PyBool_FromLong((long) cache_contains(self->cache, filepath));
+    bool contains = cache_contains(self->cache, filepath);
+    printf("Contains %s? %d\n", filepath, (int) contains);
+
+    return PyBool_FromLong((long) contains);
 }
 
 /* PyCache method to explicitly cache data. Returns True on success, False on
