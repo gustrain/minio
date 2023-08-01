@@ -65,9 +65,11 @@ def test_integrity(size: int,
                    max_cacheable: int,
                    filepaths: List[str],
                    data: Dict[str, bytearray]):
+    print("A")
     cache = minio.PyCache(size=size,
                           max_usable_file_size=max_usable,
                           max_cacheable_file_size=max_cacheable)
+    print("B")
 
     success = True
 
@@ -98,7 +100,7 @@ def main():
         return
 
     filepaths, size = get_all_filepaths(sys.argv[1], sys.argv[2])
-    print("{} filepaths, {} MBs".format(len(filepaths), size // MB))
+    print("{} filepaths, {} MB".format(len(filepaths), size // MB))
 
     # Read everything normally to have a ground truth.
     data = {}
