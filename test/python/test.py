@@ -154,7 +154,7 @@ def main():
     configs = [
         (64  * MB, 8 * MB, average_file_size),
         (128 * MB, 8 * MB, average_file_size),
-        (256 * MB, 8 * MB), average_file_size,
+        (256 * MB, 8 * MB, average_file_size),
         (512 * MB, 8 * MB, average_file_size),
     ]
 
