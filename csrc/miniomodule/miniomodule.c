@@ -182,6 +182,8 @@ PyCache_store(PyCache *self, PyObject *args, PyObject *kwds)
         return PyBool_FromLong(0);
     }
 
+    printf("storing file: %s, %lu bytes, %p buffer\n", filepath, bytes, buf.buf);
+
     int status = cache_store(self->cache, filepath, buf.buf, bytes);
     if (status < 0) {
         return PyBool_FromLong(0);
