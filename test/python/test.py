@@ -26,7 +26,7 @@ import os
 import sys
 import minio
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from glob import glob
 
 
@@ -41,7 +41,7 @@ def get_all_filepaths(root: str, extension: str = "*"):
 # Load everything in FILEPATHS and inspect for mismatches
 def load_inspect(cache: minio.PyCache,
                  filepaths: List[str],
-                 data: Dict[str, (bytearray, int)]):
+                 data: Dict[str, Tuple(bytearray, int)]):
     matches = 0
     mismatches = 0
     for filepath in filepaths:
@@ -85,7 +85,7 @@ def manual_read(cache: minio.PyCache, filepath: str, data: bytearray):
 
 def load_inspect_manual(cache: minio.PyCache,
                         filepaths: List[str],
-                        data: Dict[str, (bytearray, int)]):
+                        data: Dict[str, Tuple(bytearray, int)]):
     matches = 0
     mismatches = 0
     for filepath in filepaths:
@@ -99,7 +99,7 @@ def load_inspect_manual(cache: minio.PyCache,
 def test_manual_methods(size: int,
                         max_usable: int,
                         filepaths: List[str],
-                        data: Dict[str, (bytearray, int)]):
+                        data: Dict[str, Tuple(bytearray, int)]):
     cache = minio.PyCache(size=size,
                           max_usable_file_size=max_usable)
 
