@@ -134,8 +134,10 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
    /* Check if the file is cached. */
    size_t bytes = 0;
    int status = cache_load(cache, path, data, &bytes, max_size);
-   if (status < 0 && status != -ENODATA) {
-      return (ssize_t) status;
+   if (status < 0) {
+      if (status != -ENODATA) {
+         return (ssize_t) status;
+      }
    } else {
       STAT_INC(cache, n_hits);
       return (ssize_t) bytes;
