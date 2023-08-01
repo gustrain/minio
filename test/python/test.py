@@ -91,7 +91,7 @@ def load_inspect_manual(cache: minio.PyCache,
     matches = 0
     mismatches = 0
     for filepath in filepaths:
-        if hash(manual_read(cache, filepath, data[filepath][0])[0]) == data[filepath][1]:
+        if hash(manual_read(cache, filepath, data[filepath][0])) == data[filepath][1]:
             matches += 1
         else:
             mismatches += 1
