@@ -85,6 +85,6 @@ int cache_store(cache_t *cache, char *path, uint8_t *data, size_t size);
 int cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max);
 ssize_t cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size);
 void cache_flush(cache_t *cache);
-int cache_init(cache_t *cache, size_t size, size_t max_item_size, policy_t policy);
+int cache_init(cache_t *cache, size_t size, size_t max_item_size, size_t avg_item_size, policy_t policy);
 
 #endif

@@ -58,8 +58,7 @@ def test_integrity(size: int,
                    max_usable: int,
                    filepaths: List[str],
                    data: Dict[str, int]):
-    cache = minio.PyCache(size=size,
-                          max_usable_file_size=max_usable)
+    cache = minio.PyCache(size=size, max_usable_file_size=max_usable)
 
     success = True
 
@@ -102,8 +101,7 @@ def test_manual_methods(size: int,
                         max_usable: int,
                         filepaths: List[str],
                         data: Dict[str, Tuple[bytearray, int]]):
-    cache = minio.PyCache(size=size,
-                          max_usable_file_size=max_usable)
+    cache = minio.PyCache(size=size, max_usable_file_size=max_usable)
 
     success = True
 

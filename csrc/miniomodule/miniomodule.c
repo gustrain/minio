@@ -81,11 +81,13 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     /* Parse arguments. */
     size_t size, max_usable_file_size;
     size_t max_cacheable_file_size = 0; /* If zero, defaults to MAX_USABLE_FILE_SIZE. */
+    size_t average_file_size = 0;
     static char *kwlist[] = {"size", "max_usable_file_size", "max_cacheable_file_size", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk|k", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk|kk", kwlist,
                                      &size,
                                      &max_usable_file_size,
-                                     &max_cacheable_file_size)) {
+                                     &max_cacheable_file_size,
+                                     &average_file_size)) {
         PyErr_SetString(PyExc_Exception, "missing/invalid argument");
         return -1;
     }
@@ -118,7 +120,11 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     /* Initialize the cache. */
-    int status = cache_init(cache->cache, size, max_cacheable_file_size, POLICY_MINIO);
+    int status = cache_init(cache->cache,
+                            size,
+                            max_cacheable_file_size,
+                            average_file_size,
+                            POLICY_MINIO);
     if (status < 0) {
         switch (status) {
             case -ENOMEM:
