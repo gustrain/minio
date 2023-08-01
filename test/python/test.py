@@ -141,7 +141,7 @@ def main():
     average_file_size = size // len(filepaths)
     print("{} filepaths, {} MB, {} KB average".format(len(filepaths),
                                                       size // MB,
-                                                      average_file_size))
+                                                      average_file_size // 1024))
 
     # Read everything normally to have a ground truth.
     data = {}
