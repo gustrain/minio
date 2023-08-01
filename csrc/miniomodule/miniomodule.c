@@ -207,6 +207,7 @@ PyCache_load(PyCache *self, PyObject *args, PyObject *kwds)
         return Py_None;
     }
     
+    printf("Size: %lu\n", size);
     PyObject *bytes = PyBytes_FromStringAndSize((char *) self->temp, size);
     PyObject *size_ = PyLong_FromLong(size);
     PyObject *out = PyTuple_Pack(2, bytes, size_);
