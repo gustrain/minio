@@ -90,8 +90,13 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    /* Default to max usable file size (i.e., no-op). */
+    if (max_cacheable_file_size == 0) {
+        max_cacheable_file_size = max_usable_file_size;
+    }
+
     /* If specified, the max usable item size must be <= max cacheable size. */
-    if (max_cacheable_file_size != 0 && max_cacheable_file_size > max_usable_file_size) {
+    if (max_cacheable_file_size > max_usable_file_size) {
         PyErr_SetString(PyExc_Exception, "max_cacheable_file_size must be <= max_usable_file_size");
         return -1;
     }
@@ -180,7 +185,7 @@ PyCache_store(PyCache *self, PyObject *args, PyObject *kwds)
     printf("storing file: %s, %lu bytes, %p buffer\n", filepath, bytes, buf.buf);
 
     /* Don't cache things that are bigger than we allow. */
-    if (self->max_cacheable_file_size > 0 && bytes > self->max_cacheable_file_size) {
+    if (bytes > self->max_cacheable_file_size) {
         printf("too large...\n");
         return PyBool_FromLong(0);
     }
