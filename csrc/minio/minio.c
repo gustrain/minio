@@ -77,6 +77,8 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
    /* Copy data to the cache. */
    memcpy(entry->ptr, data, size);
 
+   printf("Adding %s to the cache\n", path);
+
    /* Insert into hash table. */
    pthread_spin_lock(&cache->ht_lock);
    HASH_ADD_STR(cache->ht, path, entry);
