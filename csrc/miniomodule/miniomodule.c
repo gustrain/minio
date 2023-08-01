@@ -180,7 +180,7 @@ PyCache_store(PyCache *self, PyObject *args, PyObject *kwds)
     printf("storing file: %s, %lu bytes, %p buffer\n", filepath, bytes, buf.buf);
 
     /* Don't cache things that are bigger than we allow. */
-    if (bytes > self->max_cacheable_file_size) {
+    if (self->max_cacheable_file_size > 0 && bytes > self->max_cacheable_file_size) {
         printf("too large...\n");
         return PyBool_FromLong(0);
     }
