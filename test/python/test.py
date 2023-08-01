@@ -41,11 +41,11 @@ def get_all_filepaths(root: str, extension: str = "*"):
 # Load everything in FILEPATHS and inspect for mismatches
 def load_inspect(cache: minio.PyCache,
                  filepaths: List[str],
-                 data: Dict[str, int]):
+                 data: Dict[str, (bytearray, int)]):
     matches = 0
     mismatches = 0
     for filepath in filepaths:
-        if hash(cache.read(filepath)[0]) == data[filepath]:
+        if hash(cache.read(filepath)[0]) == data[filepath][1]:
             matches += 1
         else:
             mismatches += 1
@@ -76,6 +76,48 @@ def test_integrity(size: int,
 
     return success
 
+def manual_read(cache: minio.PyCache, filepath: str, data: bytearray):
+    if (cache.contains(filepath)):
+        return cache.load(filepath)
+    else:
+        cache.store(filepath, len(data), data)
+        return manual_read(cache, filepath, data)
+
+def load_inspect_manual(cache: minio.PyCache,
+                        filepaths: List[str],
+                        data: Dict[str, (bytearray, int)]):
+    matches = 0
+    mismatches = 0
+    for filepath in filepaths:
+        if hash(manual_read(cache, filepath, data[filepath][0])) == data[filepath][1]:
+            matches += 1
+        else:
+            mismatches += 1
+    
+    return matches, mismatches
+
+def test_manual_methods(size: int,
+                        max_usable: int,
+                        filepaths: List[str],
+                        data: Dict[str, (bytearray, int)]):
+    cache = minio.PyCache(size=size,
+                          max_usable_file_size=max_usable)
+
+    success = True
+
+    # Load the files for the first time (Mixed cold/capacity misses)
+    matches, mismatches = load_inspect_manual(cache, filepaths, data)
+    if mismatches > 0:
+        success = False
+
+    
+    # Load the files for the second time (Mixed hits/capacity misses)
+    matches, mismatches = load_inspect_manual(cache, filepaths, data)
+    if mismatches > 0:
+        success = False
+
+    return success
+
 def main():
     np.random.seed(42)
     MB = 1024 * 1024
@@ -94,7 +136,8 @@ def main():
     data = {}
     for filepath in filepaths:
         with open(filepath, 'rb') as file:
-            data[filepath] = hash(file.read(-1))
+            bytes = file.read(-1)
+            data[filepath] = (bytes, hash(bytes))
 
     # Read everything with various cache sizes and ensure everything matches.
     configs = [
@@ -104,9 +147,18 @@ def main():
         (512 * MB, 8 * MB),
     ]
 
+    print("-- testing integrity --")
     for config in configs:
         print("testing {} MB cache...".format(config[0] // MB), end="")
         if (test_integrity(*config, filepaths, data)):
+            print("OK.")
+        else:
+            print("FAIL.")
+
+    print("-- testing manual methods --")
+    for config in configs:
+        print("testing {} MB cache...".format(config[0] // MB), end="")
+        if (test_manual_methods(*config, filepaths, data)):
             print("OK.")
         else:
             print("FAIL.")
