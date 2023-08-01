@@ -161,9 +161,7 @@ PyCache_contains(PyCache *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    bool contains = cache_contains(self->cache, filepath);
-
-    return PyBool_FromLong((long) contains);
+    return PyBool_FromLong((long) cache_contains(self->cache, filepath));
 }
 
 /* PyCache method to explicitly cache data. Returns True on success, False on
@@ -219,7 +217,7 @@ PyCache_load(PyCache *self, PyObject *args, PyObject *kwds)
         PyErr_Format(PyExc_Exception, "load failed; %s", strerror(-status));
         return NULL;
     }
-    
+
     PyObject *bytes = PyBytes_FromStringAndSize((char *) self->temp, size);
     PyObject *size_ = PyLong_FromLong(size);
     PyObject *out = PyTuple_Pack(2, bytes, size_);
