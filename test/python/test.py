@@ -62,13 +62,11 @@ def load_inspect(cache: minio.PyCache,
 # Test that we're loading files correctly, and no corruption is occuring.
 def test_integrity(size: int,
                    max_usable: int,
-                   max_cacheable: int,
                    filepaths: List[str],
                    data: Dict[str, bytearray]):
     print("A")
     cache = minio.PyCache(size=size,
-                          max_usable_file_size=max_usable,
-                          max_cacheable_file_size=max_cacheable)
+                          max_usable_file_size=max_usable)
     print("B")
 
     success = True
@@ -110,10 +108,10 @@ def main():
 
     # Read everything with various cache sizes and ensure everything matches.
     configs = [
-        (64 * MB, 8 * MB, 8 * MB),
-        (128 * MB, 8 * MB, 8 * MB),
-        (256 * MB, 8 * MB, 8 * MB),
-        (512 * MB, 8 * MB, 8 * MB),
+        (64  * MB, 8 * MB),
+        (128 * MB, 8 * MB),
+        (256 * MB, 8 * MB),
+        (512 * MB, 8 * MB),
     ]
 
     for config in configs:
