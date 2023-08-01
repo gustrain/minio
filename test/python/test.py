@@ -78,10 +78,10 @@ def test_integrity(size: int,
 
 def manual_read(cache: minio.PyCache, filepath: str, data: bytearray):
     if (cache.contains(filepath)):
-        return cache.load(filepath)
+        return cache.load(filepath)[0]
     else:
         if (cache.store(filepath, len(data), data)):
-            return cache.load(filepath)
+            return cache.load(filepath)[0]
         else:
             return data
 
