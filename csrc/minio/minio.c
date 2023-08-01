@@ -98,7 +98,6 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
    if (entry == NULL) {
-      printf("foo\n");
       return -ENODATA;
    }
 
@@ -179,6 +178,8 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
    } else {
       STAT_INC(cache, n_miss_capacity);
    }
+
+   printf("size = %ld\n");
 
    return size;
 }
