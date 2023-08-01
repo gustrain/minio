@@ -117,7 +117,7 @@ def main():
     ]
 
     for config in configs:
-        print("testing {} MB cache...".format(configs[0]), end="")
+        print("testing {} MB cache...".format(config[0]), end="")
         if (test_integrity(*config, filepaths, data)):
             print("OK.")
         else:
