@@ -208,7 +208,8 @@ PyCache_load(PyCache *self, PyObject *args, PyObject *kwds)
                             &size,
                             self->max_cacheable_file_size);
     if (status < 0) {
-        return Py_None;
+        PyErr_Format(PyExc_Exception, "load failed; %s", strerror(-status));
+        return NULL;
     }
     
     printf("Size: %lu\n", size);
