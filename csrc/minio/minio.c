@@ -50,10 +50,7 @@ bool
 cache_contains(cache_t *cache, char *path)
 {
    hash_entry_t *entry = NULL;
-   
-   pthread_spin_lock(&cache->ht_lock);
    HASH_FIND_STR(cache->ht, path, entry);
-   pthread_spin_unlock(&cache->ht_lock);
 
    return (entry != NULL);
 }
@@ -98,12 +95,14 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
    if (entry == NULL) {
+      printf("not found on load\n");
       return -ENODATA;
    }
 
    /* Don't overflow the buffer. */
    *size = entry->size;
    if (entry->size > max) {
+      printf("too big\n");
       return -EINVAL;
    }
    memcpy(data, entry->ptr, entry->size);
