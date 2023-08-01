@@ -179,7 +179,7 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
       STAT_INC(cache, n_miss_capacity);
    }
 
-   printf("%s size = %ld\n", filepath, size);
+   printf("%s size = %ld\n", path, size);
 
    return size;
 }
