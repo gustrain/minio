@@ -95,14 +95,12 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
    if (entry == NULL) {
-      printf("not found on load\n");
       return -ENODATA;
    }
 
    /* Don't overflow the buffer. */
    *size = entry->size;
    if (entry->size > max) {
-      printf("too big\n");
       return -EINVAL;
    }
    memcpy(data, entry->ptr, entry->size);
@@ -179,8 +177,6 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
    } else {
       STAT_INC(cache, n_miss_capacity);
    }
-
-   printf("%s size = %ld\n", path, size);
 
    return size;
 }
