@@ -49,6 +49,8 @@
 bool
 cache_contains(cache_t *cache, char *path)
 {
+   printf("cache: %p\n", cache);
+
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
 
