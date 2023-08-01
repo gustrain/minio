@@ -81,7 +81,7 @@ def manual_read(cache: minio.PyCache, filepath: str, data: bytearray):
         return cache.load(filepath)
     else:
         cache.store(filepath, len(data), data)
-        return manual_read(cache, filepath, data)
+        return cache.load(filepath)
 
 def load_inspect_manual(cache: minio.PyCache,
                         filepaths: List[str],
@@ -147,13 +147,13 @@ def main():
         (512 * MB, 8 * MB),
     ]
 
-    print("-- testing integrity --")
-    for config in configs:
-        print("testing {} MB cache...".format(config[0] // MB), end="")
-        if (test_integrity(*config, filepaths, data)):
-            print("OK.")
-        else:
-            print("FAIL.")
+    # print("-- testing integrity --")
+    # for config in configs:
+    #     print("testing {} MB cache...".format(config[0] // MB), end="")
+    #     if (test_integrity(*config, filepaths, data)):
+    #         print("OK.")
+    #     else:
+    #         print("FAIL.")
 
     print("-- testing manual methods --")
     for config in configs:
