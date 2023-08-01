@@ -88,6 +88,7 @@ def test_integrity(size: int,
 
 def main():
     np.random.seed(42)
+    MB = 1024 * 1024
 
     if len(sys.argv) < 2:
         print("Please provide the filepath of a directory to load from.")
@@ -97,6 +98,7 @@ def main():
         return
 
     filepaths, size = get_all_filepaths(sys.argv[1], sys.argv[2])
+    print("{} filepaths, {} MBs".format(len(filepaths), size // MB))
 
     # Read everything normally to have a ground truth.
     data = {}
@@ -105,7 +107,6 @@ def main():
             data[filepath] = file.read(-1)
 
     # Read everything with various cache sizes and ensure everything matches.
-    MB = 1024 * 1024
     configs = [
         (64 * MB, 8 * MB, 8 * MB),
         (128 * MB, 8 * MB, 8 * MB),
