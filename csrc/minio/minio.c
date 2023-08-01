@@ -49,7 +49,7 @@
 bool
 cache_contains(cache_t *cache, char *path)
 {
-   printf("cache: %p, entries: %lu max entries: %lu, path: %s\n", cache, cache->n_ht_entries, cache->max_ht_entries, path);
+   printf("cache: %p, ht: %p, entries: %lu, max entries: %lu, path: %s\n", cache, cache->ht, cache->n_ht_entries, cache->max_ht_entries, path);
 
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
