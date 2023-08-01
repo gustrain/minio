@@ -180,7 +180,11 @@ PyCache_store(PyCache *self, PyObject *args, PyObject *kwds)
     }
 
     int status = cache_store(self->cache, filepath, buf.buf, bytes);
-    return PyBool_FromLong((long) status);
+    if (status < 0) {
+        return PyBool_FromLong(0);
+    }
+
+    return PyBool_FromLong(1);
 }
 
 /* PyCache method to load from cache without issuing IO on miss. Returns a tuple
