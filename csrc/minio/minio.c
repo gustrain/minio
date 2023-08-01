@@ -231,14 +231,12 @@ cache_init(cache_t *cache,
       cache->max_ht_entries = (2 * size) / AVERAGE_FILE_SIZE;
    }
    assert(cache->max_ht_entries > 0);
-   cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
+   cache->ht_size = (cache->max_ht_entries + 1) * sizeof(hash_entry_t);
    if ((cache->ht_entries = mmap_alloc(cache->ht_size)) == NULL) {
       return -ENOMEM;
    }
-   if ((cache->ht = mmap_alloc(sizeof(hash_entry_t))) == NULL) {
-      mmap_free(cache->ht_entries, cache->ht_size);
-      return -ENOMEM;
-   }
+   cache->ht = &cache->ht_entries[cache->max_ht_entries];
+   memset(cache->ht_entries, 0, cache->ht_size);
 
    /* Synchronization initialization. */
    pthread_spin_init(&cache->ht_lock, PTHREAD_PROCESS_SHARED);
