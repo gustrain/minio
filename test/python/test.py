@@ -41,17 +41,11 @@ def get_all_filepaths(root: str, extension: str = "*"):
 # Load everything in FILEPATHS and inspect for mismatches
 def load_inspect(cache: minio.PyCache,
                  filepaths: List[str],
-                 data: Dict[str, bytearray]):
+                 data: Dict[str, int]):
     matches = 0
     mismatches = 0
     for filepath in filepaths:
-        matched = True
-        for x, y in zip(cache.read(filepath)[0], data[filepath]):
-            if not x == y:
-                matched = False
-                break
-
-        if matched:
+        if hash(cache.read(filepath)[0]) == data[filepath]:
             matches += 1
         else:
             mismatches += 1
@@ -63,11 +57,9 @@ def load_inspect(cache: minio.PyCache,
 def test_integrity(size: int,
                    max_usable: int,
                    filepaths: List[str],
-                   data: Dict[str, bytearray]):
-    print("A")
+                   data: Dict[str, int]):
     cache = minio.PyCache(size=size,
                           max_usable_file_size=max_usable)
-    print("B")
 
     success = True
 
@@ -104,7 +96,7 @@ def main():
     data = {}
     for filepath in filepaths:
         with open(filepath, 'rb') as file:
-            data[filepath] = file.read(-1)
+            data[filepath] = hash(file.read(-1))
 
     # Read everything with various cache sizes and ensure everything matches.
     configs = [
