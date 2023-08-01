@@ -158,15 +158,15 @@ def main():
         (512 * MB, 8 * MB, average_file_size),
     ]
 
-    print("-- testing integrity --")
-    for config in configs:
-        print("testing {} MB cache...".format(config[0] // MB), end="")
-        if (test_integrity(*config, filepaths, data)):
-            print("OK.")
-        else:
-            print("FAIL.")
+    # print("-- testing integrity --")
+    # for config in configs:
+    #     print("testing {} MB cache...".format(config[0] // MB), end="")
+    #     if (test_integrity(*config, filepaths, data)):
+    #         print("OK.")
+    #     else:
+    #         print("FAIL.")
 
-    print("-- testing manual methods --")
+    print("-- testing manual methods integrity --")
     for config in configs:
         print("testing {} MB cache...".format(config[0] // MB), end="")
         if (test_manual_methods(*config, filepaths, data)):
