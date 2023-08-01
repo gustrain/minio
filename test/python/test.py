@@ -65,14 +65,12 @@ def test_integrity(size: int,
 
     # Load the files for the first time (Mixed cold/capacity misses)
     matches, mismatches = load_inspect(cache, filepaths, data)
-    print("Load #1: {} matches, {} mismatches".format(matches, mismatches))
     if mismatches > 0:
         success = False
 
     
     # Load the files for the second time (Mixed hits/capacity misses)
     matches, mismatches = load_inspect(cache, filepaths, data)
-    print("Load #2: {} matches, {} mismatches".format(matches, mismatches))
     if mismatches > 0:
         success = False
 
