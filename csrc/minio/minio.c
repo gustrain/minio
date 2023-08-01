@@ -52,6 +52,8 @@ cache_contains(cache_t *cache, char *path)
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
 
+   printf("Entry: %p\n", entry);
+
    return (entry != NULL);
 }
 
