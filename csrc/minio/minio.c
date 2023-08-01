@@ -225,10 +225,8 @@ cache_init(cache_t *cache,
    cache->n_ht_entries = 0;
    if (avg_item_size != 0) {
       cache->max_ht_entries = (2 * size) / avg_item_size;
-   } else if (max_item_size == 0) {
-      cache->max_ht_entries = (2 * size) / AVERAGE_FILE_SIZE;
    } else {
-      cache->max_ht_entries = (4 * size) / (max_item_size / 4);
+      cache->max_ht_entries = (2 * size) / AVERAGE_FILE_SIZE;
    }
    assert(cache->max_ht_entries > 0);
    cache->ht_size = cache->max_ht_entries * sizeof(hash_entry_t);
