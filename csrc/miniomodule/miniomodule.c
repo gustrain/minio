@@ -35,9 +35,12 @@
 typedef struct {
     PyObject_HEAD
 
-    cache_t *cache;          /* MinIO cache. */
-    size_t   max_file_size;  /* Max file size we allow in this cache. */
-    uint8_t *temp;           /* MAX_FILE_SIZE bytes used for copying. */
+    cache_t *cache;                     /* MinIO cache. */
+    size_t   max_usable_file_size;      /* Max file size we can read. */
+    size_t   max_cacheable_file_size;   /* Max file size we can cache. Defaults
+                                           to MAX_USABLE_FILE_SIZE if zero. */
+    uint8_t *temp;                      /* MAX_USABLE_FILE_SIZE bytes used for
+                                           copying. */
 } PyCache;
 
 /* PyCache deallocate method. */
@@ -45,20 +48,24 @@ static void
 PyCache_dealloc(PyObject *self)
 {
     PyCache *cache = (PyCache *) self;
+    if (cache == NULL) {
+        return;
+    }
 
-    /* Free the shared memory allocated for the cache region. */
-    if (cache->cache->data != NULL) {
-        munmap(cache->cache->data, cache->cache->size);
+    /* Only free memory in the cache struct if it's actually been allocated. */
+    if (cache->cache != NULL) {
+        /* Free the shared memory allocated for the cache region. */
+        if (cache->cache->data != NULL) {
+            munmap(cache->cache->data, cache->cache->size);
+        }
+        
+        /* Free the shared memory allocated for the cache struct. */
+        munmap(cache->cache, sizeof(cache_t));
     }
 
     /* Free the memory allocated for the copy region. */
     if (cache->temp != NULL) {
         free(cache->temp);
-    }
-
-    /* Free the shared memory allocated for the cache struct. */
-    if (cache->cache != NULL) {
-        munmap(cache->cache, sizeof(cache_t));
     }
 
     /* Free the cache wrapper struct itself. */
@@ -72,10 +79,20 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     PyCache *cache = (PyCache *) self;
 
     /* Parse arguments. */
-    size_t size, max_file_size;
-    static char *kwlist[] = {"size", "max_file_size", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk", kwlist, &size, &max_file_size)) {
+    size_t size, max_usable_file_size;
+    size_t max_cacheable_file_size = 0; /* If zero, defaults to MAX_USABLE_FILE_SIZE. */
+    static char *kwlist[] = {"size", "max_usable_file_size", "max_cacheable_file_size", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk|k", kwlist,
+                                     &size,
+                                     &max_usable_file_size,
+                                     &max_cacheable_file_size)) {
         PyErr_SetString(PyExc_Exception, "missing/invalid argument");
+        return -1;
+    }
+
+    /* If specified, the max usable item size must be <= max cacheable size. */
+    if (max_cacheable_file_size != 0 && max_cacheable_file_size > max_usable_file_size) {
+        PyErr_SetString(PyExc_Exception, "max_cacheable_file_size must be <= max_usable_file_size");
         return -1;
     }
 
@@ -83,15 +100,16 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     cache->cache = mmap_alloc(sizeof(cache_t));
 
     /* Set up the copy area. */
-    cache->max_file_size = max_file_size;
-    if (posix_memalign((void **) &cache->temp, BLOCK_SIZE, max_file_size) != 0) {
+    cache->max_usable_file_size = max_usable_file_size;
+    cache->max_cacheable_file_size = max_cacheable_file_size;
+    if (posix_memalign((void **) &cache->temp, BLOCK_SIZE, max_usable_file_size) != 0) {
         PyErr_SetString(PyExc_MemoryError, "couldn't allocate temp area");
         PyErr_NoMemory();
         return -1;
     }
 
     /* Initialize the cache. */
-    int status = cache_init(cache->cache, size, POLICY_MINIO);
+    int status = cache_init(cache->cache, size, max_cacheable_file_size, POLICY_MINIO);
     if (status < 0) {
         switch (status) {
             case -ENOMEM:
@@ -138,7 +156,7 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
     ssize_t size = cache_read(self->cache,
                               filepath,
                               self->temp,
-                              self->max_file_size);
+                              self->max_usable_file_size);
     if (size < 0l) {
         switch (size) {
             case -EINVAL:

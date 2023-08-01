@@ -27,7 +27,7 @@ Alternatively, instead of `unlimited` you can specify the maximum (total, across
 
 ## Documentation
 
-This module adds a new class, `minio.PyCache`, initialized with parameters `size` and `max_file_size`, both specifying size in bytes. An area of `max_file_size` bytes will be allocated as a temporary area for copying files in addition to the `size` bytes allocated for the cache.
+This module adds a new class, `minio.PyCache`, initialized with parameters `size`, `max_usable_file_size`, and `max_cacheable_file_size`, all specifying size in bytes. An area of `max_usable_file_size` bytes will be allocated as a temporary area for copying files in addition to the `size` bytes allocated for the cache. `max_cacheable_file_size` is optional, and any file exceeding this value (unless value is zero) will bypass the cache when read. 
 
 ### `PyCache.read_file(filepath: str)`
 

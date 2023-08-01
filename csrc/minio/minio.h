@@ -57,6 +57,9 @@ typedef struct {
     size_t   size;              /* Size of cache in bytes. */
     size_t   ht_size;           /* Number of bytes allocated for HT entries. */
     size_t   max_ht_entries;    /* Maximum number of HT entries. */
+    size_t   max_item_size;     /* Maximum size of an element in the cache. All
+                                   reads for larger items bypass the cache. A
+                                   size of zero indicates there is no limit. */
 
     /* State. */
     atomic_size_t used;             /* Number of bytes cached. */
@@ -79,6 +82,6 @@ typedef struct {
 
 ssize_t cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size);
 void cache_flush(cache_t *cache);
-int cache_init(cache_t *cache, size_t size, policy_t policy);
+int cache_init(cache_t *cache, size_t size, size_t max_item_size, policy_t policy);
 
 #endif
