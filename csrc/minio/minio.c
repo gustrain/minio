@@ -105,7 +105,7 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
    /* Don't overflow the buffer. */
    *size = entry->size;
    if (entry->size > max) {
-      printf("load too large... %lu bytes\n", entry->size);
+      printf("load too large... %lu bytes (max = %lu)\n", entry->size, max);
       return -EINVAL;
    }
    memcpy(data, entry->ptr, entry->size);
