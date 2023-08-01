@@ -45,8 +45,74 @@
 #define STAT_INC(cache, field) atomic_fetch_add(&cache->field, 1)
 
 
-/* Read an item from CACHE into DATA, indexed by FILEPATH, and located on the
-   filesystem at FILEPATH. On failure returns ERRNO code with negative value,
+/* Check if PATH is cached in CACHE. Returns true if cached, else false. */
+bool
+cache_contains(cache_t *cache, char *path)
+{
+   hash_entry_t *entry = NULL;
+   
+   pthread_spin_lock(&cache->ht_lock);
+   HASH_FIND_STR(cache->ht, path, entry);
+   pthread_spin_unlock(&cache->ht_lock);
+
+   return (entry != NULL);
+}
+
+/* Store DATA into CACHE indexed by PATH. On success, returns 0. On failure,
+   returns negative errno value. */
+int
+cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
+{
+   /* Acquire an entry. */
+   size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
+   if (n >= cache->max_ht_entries) {
+      return -ENOMEM;
+   }
+   hash_entry_t *entry = &cache->ht_entries[n];
+
+   /* Copy the path into the entry. */
+   strncpy(entry->path, path, MAX_PATH_LENGTH);
+
+   /* Figure out where the data goes. */
+   entry->size = size;
+   entry->ptr = cache->data + atomic_fetch_add(&cache->used, size);
+
+   /* Copy data to the cache. */
+   memcpy(entry->ptr, data, size);
+
+   /* Insert into hash table. */
+   pthread_spin_lock(&cache->ht_lock);
+   HASH_ADD_STR(cache->ht, path, entry);
+   pthread_spin_unlock(&cache->ht_lock);
+
+   return 0;
+}
+
+/* Load the data at PATH in CACHE into DATA (a maximum of MAX bytes), storing
+   the size of the file into SIZE. A cache miss is considered a failure
+   (-ENODATA is returned without any IO being issued). On success returns 0.
+   On failure returns negative errno. */
+int
+cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
+{
+   hash_entry_t *entry = NULL;
+   HASH_FIND_STR(cache->ht, path, entry);
+   if (entry == NULL) {
+      return -ENODATA;
+   }
+
+   /* Don't overflow the buffer. */
+   *size = entry->size;
+   if (entry->size > max) {
+      return -EINVAL;
+   }
+   memcpy(data, entry->ptr, entry->size);
+
+   return 0;
+}
+
+/* Read an item from CACHE into DATA, indexed by PATH, and located on the
+   filesystem at PATH. On failure returns errno code with negative value,
    otherwise returns bytes read on success.
    
    DATA must be block-aligned, in order for direct IO to work properly.
@@ -59,7 +125,7 @@
    It should be noted that the cache is only thread/process safe so long as the
    cache entries are only written once (as is the case with MinIO). */
 ssize_t
-cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
+cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
 {
    size_t n_accs = STAT_INC(cache, n_accs);
    if (n_accs % 2500 == 0) {
@@ -67,21 +133,17 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    }
 
    /* Check if the file is cached. */
-   hash_entry_t *entry = NULL;
-   HASH_FIND_STR(cache->ht, filepath, entry);
-   if (entry != NULL) {
-      /* Don't overflow the buffer. */
-      if (entry->size > max_size) {
-         return -EINVAL;
-      }
-      memcpy(data, entry->ptr, entry->size);
-
+   size_t bytes = 0;
+   int status = cache_load(cache, path, data, &bytes, max_size);
+   if (status < 0 && status != -ENODATA) {
+      return status;
+   } else {
       STAT_INC(cache, n_hits);
-      return entry->size;
+      return bytes;
    }
 
    /* Open the file in DIRECT mode. */
-   int fd = open(filepath, O_RDONLY | __O_DIRECT);
+   int fd = open(path, O_RDONLY | __O_DIRECT);
    if (fd < 0) {
       STAT_INC(cache, n_fail);
       return -ENOENT;
@@ -96,41 +158,22 @@ cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size)
    }
    lseek(fd, 0L, SEEK_SET);
 
+   /* Note there is an implicit assumption that two threads/processes will not
+      simultaneously attempt to access the same path for the *first* time.
+      For ML data-loader applications this is satisfied, since each element is
+      accessed only once per epoch, however this will present a race condition
+      in applications where this scenario can occur. */
+
    /* Read into data and cache the data if it'll fit. */
    read(fd, data, (size | 0xFFF) + 1);
    close(fd);
-   if (size <= cache->size - cache->used
-       && (size <= cache->max_item_size || cache->max_item_size == 0)) {
-      /* Acquire an entry. */
-      size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
-      if (n >= cache->max_ht_entries) {
+   if ((size <= cache->size - cache->used) &&
+       (size <= cache->max_item_size || cache->max_item_size == 0)) {
+      int status = cache_store(cache, path, data, size);
+      if (status < 0) {
          STAT_INC(cache, n_fail);
-         return -ENOMEM;
+         return status;
       }
-      hash_entry_t *entry = &cache->ht_entries[n];
-
-      /* Copy the filepath into the entry. */
-      strncpy(entry->filepath, filepath, MAX_PATH_LENGTH);
-
-      /* Figure out where the data goes. Note that the atomic_X functions return
-         the pre-operation value. */
-      entry->size = size;
-      entry->ptr = cache->data + atomic_fetch_add(&cache->used, size);
-
-      /* Copy data to the cache. */
-      memcpy(entry->ptr, data, size);
-
-      /* Note there is an implicit assumption that two threads/processes will
-         not simultaneously attempt to access the same filepath for the first
-         time. For ML data-loader applications this is satisfied, since each
-         element is accessed only once per epoch, however this will present a
-         race condition in applications where this scenario can occur. */
-
-      /* Insert into hash table. */
-      pthread_spin_lock(&cache->ht_lock);
-      HASH_ADD_STR(cache->ht, filepath, entry);
-      pthread_spin_unlock(&cache->ht_lock);
-
       STAT_INC(cache, n_miss_cold);
    } else {
       STAT_INC(cache, n_miss_capacity);
@@ -150,12 +193,12 @@ cache_flush(cache_t *cache)
 {
    /* Clear the HT and the cache metadata. */
    HASH_CLEAR(hh, cache->ht);
-   cache->n_ht_entries = 0UL;
-   cache->used = 0UL;
+   cache->n_ht_entries = 0;
+   cache->used = 0;
 }
 
 /* Initialize a cache CACHE with SIZE bytes and POLICY replacement policy. On
-   success, 0 is returned. On failure, negative ERRNO value is returned. */
+   success, 0 is returned. On failure, negative errno value is returned. */
 int
 cache_init(cache_t *cache, size_t size, size_t max_item_size, policy_t policy)
 {

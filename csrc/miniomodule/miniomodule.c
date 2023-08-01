@@ -140,6 +140,82 @@ PyCache_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *) self;
 }
 
+/* PyCache method to check if a filepath is cached. */
+static PyObject *
+PyCache_contains(PyCache *self, PyObject *args, PyObject *kwds)
+{
+    /* Parse arguments. */
+    char *filepath;
+    static char *kwlist[] = {"filepath", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist, &filepath)) {
+        PyErr_SetString(PyExc_Exception, "missing/invalid argument");
+        return NULL;
+    }
+
+    return PyBool_FromLong((long) cache_contains(self->cache, filepath));
+}
+
+/* PyCache method to explicitly cache data. Returns True on success, False on
+   failure. */
+static PyObject *
+PyCache_store(PyCache *self, PyObject *args, PyObject *kwds)
+{
+    /* Parse arguments. */
+    char *filepath;
+    size_t bytes;
+    Py_buffer buf;
+    static char *kwlist[] = {"filepath", "bytes", "data",  NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "sks*", kwlist, &filepath, &bytes,&buf)) {
+        PyErr_SetString(PyExc_Exception, "missing/invalid argument");
+        return NULL;
+    }
+    
+    /* Don't cache things that are bigger than we allow. */
+    if (bytes > self->max_cacheable_file_size) {
+        return PyBool_FromLong(0);
+    }
+
+    int status = cache_store(self->cache, filepath, buf.buf, bytes);
+    return PyBool_FromLong((long) status);
+}
+
+/* PyCache method to load from cache without issuing IO on miss. Returns a tuple
+   (data, size) on success. Returns None on failure. */
+static PyObject *
+PyCache_load(PyCache *self, PyObject *args, PyObject *kwds)
+{
+    /* Parse arguments. */
+
+    char *filepath;
+    static char *kwlist[] = {"filepath", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist, &filepath)) {
+        PyErr_SetString(PyExc_Exception, "missing/invalid argument");
+        return NULL;
+    }
+
+    size_t size = 0;
+    int status = cache_load(self->cache,
+                            filepath,
+                            self->temp,
+                            &size,
+                            self->max_cacheable_file_size);
+    if (status < 0) {
+        return Py_None;
+    }
+    
+    PyObject *bytes = PyBytes_FromStringAndSize((char *) self->temp, size);
+    PyObject *size_ = PyLong_FromLong(size);
+    PyObject *out = PyTuple_Pack(2, bytes, size_);
+
+    /* Because PyTuple_Pack increments the reference counter for all inputs,
+       we must decrement the refcounts to prevent a leak where the count is >1
+       when we return. */
+    Py_DECREF(bytes);
+    Py_DECREF(size_);
+
+    return out;
+}
+
 /* PyCache read/get method. Returns (data, size) as a tuple. */
 static PyObject *
 PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
@@ -218,10 +294,48 @@ PyCache_get_used(PyCache *self, PyObject *args, PyObject *kwds)
 
 /* PyCache methods. */
 static PyMethodDef PyCache_methods[] = {
-    {"read_file", (PyCFunction) PyCache_read, METH_VARARGS | METH_KEYWORDS, "Read a file through the cache."},
-    {"flush", (PyCFunction) PyCache_flush, METH_NOARGS, "Flush the cache."},
-    {"get_size", (PyCFunction) PyCache_get_size, METH_NOARGS, "Get size of cache in bytes."},
-    {"get_used", (PyCFunction) PyCache_get_used, METH_NOARGS, "Get number of bytes used in cache."},
+    {
+        "contains",
+        (PyCFunction) PyCache_contains,
+        METH_VARARGS | METH_KEYWORDS,
+        "Check if the filepath is cached."
+    },
+    {
+        "load",
+        (PyCFunction) PyCache_load,
+        METH_VARARGS | METH_KEYWORDS,
+        "Load the filepath if it's cached (don't read on miss)."
+    },
+    {
+        "store",
+        (PyCFunction) PyCache_store,
+        METH_VARARGS | METH_KEYWORDS,
+        "Cache data at the given filepath."
+    },
+    {
+        "read_file",
+        (PyCFunction) PyCache_read,
+        METH_VARARGS | METH_KEYWORDS,
+        "Read a file through the cache."
+    },
+    {
+        "flush",
+        (PyCFunction) PyCache_flush,
+        METH_NOARGS,
+        "Flush the cache."
+    },
+    {
+        "get_size",
+        (PyCFunction) PyCache_get_size,
+        METH_NOARGS,
+        "Get size of cache in bytes."
+    },
+    {
+        "get_used",
+        (PyCFunction) PyCache_get_used,
+        METH_NOARGS,
+        "Get number of bytes used in cache."
+    },
     {NULL} /* Sentinel. */
 };
 
