@@ -78,6 +78,8 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyCache *cache = (PyCache *) self;
 
+    printf("A\n");
+
     /* Parse arguments. */
     size_t size, max_usable_file_size;
     size_t max_cacheable_file_size = 0; /* If zero, defaults to MAX_USABLE_FILE_SIZE. */
@@ -90,14 +92,24 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    printf("B\n");
+
     /* If specified, the max usable item size must be <= max cacheable size. */
     if (max_cacheable_file_size != 0 && max_cacheable_file_size > max_usable_file_size) {
         PyErr_SetString(PyExc_Exception, "max_cacheable_file_size must be <= max_usable_file_size");
         return -1;
     }
 
+    printf("C\n");
+
     /* Set up the cache struct as shared memory. */
     cache->cache = mmap_alloc(sizeof(cache_t));
+    if (cache == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "unable to allocate cache_t struct");
+        return -1;
+    }
+
+    printf("D\n");
 
     /* Set up the copy area. */
     cache->max_usable_file_size = max_usable_file_size;
@@ -107,6 +119,8 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_NoMemory();
         return -1;
     }
+
+    printf("E\n");
 
     /* Initialize the cache. */
     int status = cache_init(cache->cache, size, max_cacheable_file_size, POLICY_MINIO);
@@ -122,6 +136,8 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
 
         return -1;
     }
+
+    printf("F\n");
 
     return 0;
 }
