@@ -162,7 +162,6 @@ PyCache_contains(PyCache *self, PyObject *args, PyObject *kwds)
     }
 
     bool contains = cache_contains(self->cache, filepath);
-    printf("Contains %s? %d\n", filepath, (int) contains);
 
     return PyBool_FromLong((long) contains);
 }
@@ -181,12 +180,9 @@ PyCache_store(PyCache *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_Exception, "missing/invalid argument");
         return NULL;
     }
-    
-    printf("storing file: %s, %lu bytes, %p buffer\n", filepath, bytes, buf.buf);
 
     /* Don't cache things that are bigger than we allow. */
     if (bytes > self->max_cacheable_file_size) {
-        printf("too large...\n");
         return PyBool_FromLong(0);
     }
 
@@ -224,7 +220,6 @@ PyCache_load(PyCache *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
     
-    printf("Size: %lu\n", size);
     PyObject *bytes = PyBytes_FromStringAndSize((char *) self->temp, size);
     PyObject *size_ = PyLong_FromLong(size);
     PyObject *out = PyTuple_Pack(2, bytes, size_);

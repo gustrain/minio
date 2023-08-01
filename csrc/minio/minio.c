@@ -52,8 +52,6 @@ cache_contains(cache_t *cache, char *path)
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
 
-   printf("Entry: %p\n", entry);
-
    return (entry != NULL);
 }
 
@@ -79,8 +77,6 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
    /* Copy data to the cache. */
    memcpy(entry->ptr, data, size);
 
-   printf("Adding %s to the cache\n", path);
-
    /* Insert into hash table. */
    pthread_spin_lock(&cache->ht_lock);
    HASH_ADD_STR(cache->ht, path, entry);
@@ -105,7 +101,6 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
    /* Don't overflow the buffer. */
    *size = entry->size;
    if (entry->size > max) {
-      printf("load too large... %lu bytes (max = %lu)\n", entry->size, max);
       return -EINVAL;
    }
    memcpy(data, entry->ptr, entry->size);
