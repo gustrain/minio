@@ -81,9 +81,10 @@ def manual_read(cache: minio.PyCache, filepath: str, data: bytearray):
         print("Contains {}!".format(filepath))
         return cache.load(filepath)
     else:
-        cache.store(filepath, len(data), data)
-        cache.contains(filepath)
-        return cache.load(filepath)
+        if (cache.store(filepath, len(data), data)):
+            return cache.load(filepath)
+        else:
+            return data
 
 def load_inspect_manual(cache: minio.PyCache,
                         filepaths: List[str],
