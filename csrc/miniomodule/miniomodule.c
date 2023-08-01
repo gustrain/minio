@@ -327,7 +327,7 @@ static PyMethodDef PyCache_methods[] = {
         "Cache data at the given filepath."
     },
     {
-        "read_file",
+        "read",
         (PyCFunction) PyCache_read,
         METH_VARARGS | METH_KEYWORDS,
         "Read a file through the cache."
