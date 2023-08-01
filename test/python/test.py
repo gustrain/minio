@@ -56,9 +56,12 @@ def load_inspect(cache: minio.PyCache,
 # Test that we're loading files correctly, and no corruption is occuring.
 def test_integrity(size: int,
                    max_usable: int,
+                   average_size: int,
                    filepaths: List[str],
                    data: Dict[str, int]):
-    cache = minio.PyCache(size=size, max_usable_file_size=max_usable)
+    cache = minio.PyCache(size=size,
+                          max_usable_file_size=max_usable,
+                          average_file_size=average_size)
 
     success = True
 
@@ -99,9 +102,12 @@ def load_inspect_manual(cache: minio.PyCache,
 
 def test_manual_methods(size: int,
                         max_usable: int,
+                        average_size: int,
                         filepaths: List[str],
                         data: Dict[str, Tuple[bytearray, int]]):
-    cache = minio.PyCache(size=size, max_usable_file_size=max_usable)
+    cache = minio.PyCache(size=size,
+                          max_usable_file_size=max_usable,
+                          average_file_size=average_size)
 
     success = True
 
@@ -132,7 +138,10 @@ def main():
         return
 
     filepaths, size = get_all_filepaths(sys.argv[1], sys.argv[2])
-    print("{} filepaths, {} MB".format(len(filepaths), size // MB))
+    average_file_size = size // len(filepaths)
+    print("{} filepaths, {} MB, {} KB average".format(len(filepaths),
+                                                      size // MB,
+                                                      average_file_size))
 
     # Read everything normally to have a ground truth.
     data = {}
@@ -143,10 +152,10 @@ def main():
 
     # Read everything with various cache sizes and ensure everything matches.
     configs = [
-        (64  * MB, 8 * MB),
-        (128 * MB, 8 * MB),
-        (256 * MB, 8 * MB),
-        (512 * MB, 8 * MB),
+        (64  * MB, 8 * MB, average_file_size),
+        (128 * MB, 8 * MB, average_file_size),
+        (256 * MB, 8 * MB), average_file_size,
+        (512 * MB, 8 * MB, average_file_size),
     ]
 
     print("-- testing integrity --")

@@ -82,7 +82,10 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     size_t size, max_usable_file_size;
     size_t max_cacheable_file_size = 0; /* If zero, defaults to MAX_USABLE_FILE_SIZE. */
     size_t average_file_size = 0;
-    static char *kwlist[] = {"size", "max_usable_file_size", "max_cacheable_file_size", NULL};
+    static char *kwlist[] = {
+        "size", "max_usable_file_size", "max_cacheable_file_size",
+        "average_file_size", NULL
+    };
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk|kk", kwlist,
                                      &size,
                                      &max_usable_file_size,
