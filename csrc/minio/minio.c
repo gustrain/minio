@@ -49,15 +49,8 @@
 bool
 cache_contains(cache_t *cache, char *path)
 {
-   printf("cache: %p, ht: %p, entries: %p, n entries: %lu, max entries: %lu, path: %s\n", cache, cache->ht, cache->ht_entries, cache->n_ht_entries, cache->max_ht_entries, path);
-
    hash_entry_t *entry = NULL;
    HASH_FIND_STR(cache->ht, path, entry);
-
-   hash_entry_t *el, *tmp;
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
 
    return (entry != NULL);
 }
@@ -67,11 +60,6 @@ cache_contains(cache_t *cache, char *path)
 int
 cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
 {
-   hash_entry_t *el, *tmp;
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
-
    /* Acquire an entry. */
    size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
    if (n >= cache->max_ht_entries) {
@@ -79,16 +67,8 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
    }
    hash_entry_t *entry = &cache->ht_entries[n];
 
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
-
    /* Copy the path into the entry. */
    strncpy(entry->path, path, MAX_PATH_LENGTH);
-
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
 
    /* Figure out where the data goes. */
    entry->size = size;
@@ -102,30 +82,13 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
       return -ENOMEM;
    }
 
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
-
-   printf("entry = %p, entry->ptr = %p, data = %p, size = %lu\n", entry, entry->ptr, data, size);
-
    /* Copy data to the cache. */
    memcpy(entry->ptr, data, size);
-
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      if (el->hh.keylen >= 128) {
-         printf("el = %p, el->hh = %p, el->hh.keylen = %u\n", el, &el->hh, el->hh.keylen);
-         assert(false);
-      }
-   }
 
    /* Insert into hash table. */
    pthread_spin_lock(&cache->ht_lock);
    HASH_ADD_STR(cache->ht, path, entry);
    pthread_spin_unlock(&cache->ht_lock);
-
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
 
    return 0;
 }
@@ -149,11 +112,6 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
       return -EINVAL;
    }
    memcpy(data, entry->ptr, entry->size);
-
-   hash_entry_t *el, *tmp;
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
 
    return 0;
 }
@@ -228,11 +186,6 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
       STAT_INC(cache, n_miss_capacity);
    }
 
-   hash_entry_t *el, *tmp;
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
-   }
-
    return size;
 }
 
@@ -304,11 +257,6 @@ cache_init(cache_t *cache,
       mmap_free(cache->ht_entries, cache->ht_size);
       mmap_free(cache->ht, sizeof(hash_entry_t));
       return -ENOMEM;
-   }
-
-   hash_entry_t *el, *tmp;
-   HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
    }
 
    return 0;
