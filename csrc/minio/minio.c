@@ -60,6 +60,11 @@ cache_contains(cache_t *cache, char *path)
 int
 cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
 {
+   /* Check size constraint. */
+   if (size > cache->max_item_size) {
+      return -E2BIG;
+   }
+
    /* Acquire an entry. */
    size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
    if (n >= cache->max_ht_entries) {
@@ -171,19 +176,16 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
       accessed only once per epoch, however this will present a race condition
       in applications where this scenario can occur. */
 
-   /* Read into data and cache the data if it'll fit. */
+   /* Read into data. */
    read(fd, data, (size | 0xFFF) + 1);
    close(fd);
-   if ((size <= cache->size - cache->used) &&
-       (size <= cache->max_item_size || cache->max_item_size == 0)) {
-      int status = cache_store(cache, path, data, size);
-      if (status < 0) {
-         STAT_INC(cache, n_fail);
-         return (ssize_t) status;
-      }
-      STAT_INC(cache, n_miss_cold);
-   } else {
+
+   /* Cache the data. If this call fails, the data didn't fit. */
+   int status = cache_store(cache, path, data, size);
+   if (status < 0) {
       STAT_INC(cache, n_miss_capacity);
+   } else {
+      STAT_INC(cache, n_miss_cold);
    }
 
    return size;
