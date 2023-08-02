@@ -341,7 +341,7 @@ do {                                                                            
 
 #define HASH_ADD_TO_TABLE(hh,head,keyptr,keylen_in,hashval,add,oomed)            \
 do {                                                                             \
-  printf("HASH_ADD_TO_TABLE... keylen_in = %lu", keylen_in);\
+  printf("HASH_ADD_TO_TABLE... keylen_in = %u", keylen_in);\
   assert(keylen_in < 256);\
   unsigned _ha_bkt;                                                              \
   (head)->hh.tbl->num_items++;                                                   \
