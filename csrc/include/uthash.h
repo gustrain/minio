@@ -151,29 +151,37 @@ do {                                                                            
 
 #define HASH_VALUE(keyptr,keylen,hashv)                                          \
 do {                                                                             \
+  printf("HASH_VALUE IN\n");\
   HASH_FUNCTION(keyptr, keylen, hashv);                                          \
+  printf("HASH_VALUE OUT\n");\
 } while (0)
 
 #define HASH_FIND_BYHASHVALUE(hh,head,keyptr,keylen,hashval,out)                 \
 do {                                                                             \
+  printf("HASH_FIND_BYHASHVALUE IN\n");\
   (out) = NULL;                                                                  \
   if (head) {                                                                    \
     unsigned _hf_bkt;                                                            \
+    printf("HASH_TO_BKT IN\n");\
     HASH_TO_BKT(hashval, (head)->hh.tbl->num_buckets, _hf_bkt);                  \
+    printf("HASH_TO_BKT OUT\n");\
     if (HASH_BLOOM_TEST((head)->hh.tbl, hashval) != 0) {                         \
       HASH_FIND_IN_BKT((head)->hh.tbl, hh, (head)->hh.tbl->buckets[ _hf_bkt ], keyptr, keylen, hashval, out); \
     }                                                                            \
   }                                                                              \
+  printf("HASH_FIND_BYHASHVALUE_OUT\n");\
 } while (0)
 
 #define HASH_FIND(hh,head,keyptr,keylen,out)                                     \
 do {                                                                             \
+  printf("HASH_FIND IN\n");\
   (out) = NULL;                                                                  \
   if (head) {                                                                    \
     unsigned _hf_hashv;                                                          \
     HASH_VALUE(keyptr, keylen, _hf_hashv);                                       \
     HASH_FIND_BYHASHVALUE(hh, head, keyptr, keylen, _hf_hashv, out);             \
   }                                                                              \
+  printf("HASH_FIND OUT\n");\
 } while (0)
 
 #ifdef HASH_BLOOM
