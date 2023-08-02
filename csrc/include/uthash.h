@@ -71,9 +71,7 @@ do {                                                                            
 #else
 #define DECLTYPE_ASSIGN(dst,src)                                                 \
 do {                                                                             \
-  printf("DECLTYPE_ASSIGN IN\n");\
   (dst) = DECLTYPE(dst)(src);                                                    \
-  printf("DECLTYPE_ASSIGN OUT\n");\
 } while (0)
 #endif
 
@@ -153,40 +151,29 @@ do {                                                                            
 
 #define HASH_VALUE(keyptr,keylen,hashv)                                          \
 do {                                                                             \
-  printf("HASH_VALUE IN\n");\
   HASH_FUNCTION(keyptr, keylen, hashv);                                          \
-  printf("HASH_VALUE OUT\n");\
 } while (0)
 
 #define HASH_FIND_BYHASHVALUE(hh,head,keyptr,keylen,hashval,out)                 \
 do {                                                                             \
-  printf("HASH_FIND_BYHASHVALUE IN\n");\
   (out) = NULL;                                                                  \
   if (head) {                                                                    \
     unsigned _hf_bkt;                                                            \
-    printf("HASH_TO_BKT IN\n");\
     HASH_TO_BKT(hashval, (head)->hh.tbl->num_buckets, _hf_bkt);                  \
-    printf("HASH_TO_BKT OUT\n");\
-    printf("HASH_BLOOM_TEST IN\n");\
     if (HASH_BLOOM_TEST((head)->hh.tbl, hashval) != 0) {                         \
-      printf("HASH_BLOOM_TEST OUT (TRUE)\n");\
       HASH_FIND_IN_BKT((head)->hh.tbl, hh, (head)->hh.tbl->buckets[ _hf_bkt ], keyptr, keylen, hashval, out); \
     }                                                                            \
-    printf("HASH_BLOOM_TEST OUT (FALSE)");\
   }                                                                              \
-  printf("HASH_FIND_BYHASHVALUE_OUT\n");\
 } while (0)
 
 #define HASH_FIND(hh,head,keyptr,keylen,out)                                     \
 do {                                                                             \
-  printf("HASH_FIND IN\n");\
   (out) = NULL;                                                                  \
   if (head) {                                                                    \
     unsigned _hf_hashv;                                                          \
     HASH_VALUE(keyptr, keylen, _hf_hashv);                                       \
     HASH_FIND_BYHASHVALUE(hh, head, keyptr, keylen, _hf_hashv, out);             \
   }                                                                              \
-  printf("HASH_FIND OUT\n");\
 } while (0)
 
 #ifdef HASH_BLOOM
@@ -530,8 +517,6 @@ do {                                                                            
  * This is for uthash developer only; it compiles away if HASH_DEBUG isn't defined.
  */
 #ifdef HASH_DEBUG
-#include <stdio.h>   /* fprintf, stderr */
-#define HASH_OOPS(...) do { fprintf(stderr, __VA_ARGS__); exit(-1); } while (0)
 #define HASH_FSCK(hh,head,where)                                                 \
 do {                                                                             \
   struct UT_hash_handle *_thh;                                                   \
@@ -763,39 +748,23 @@ do {                                                                            
 /* iterate over items in a known bucket to find desired item */
 #define HASH_FIND_IN_BKT(tbl,hh,head,keyptr,keylen_in,hashval,out)               \
 do {                                                                             \
-  printf("HASH_FIND_IN_BKT IN\n");\
   if ((head).hh_head != NULL) {                                                  \
-    printf("HFIB LOOP IF 0 TRUE\n");\
     DECLTYPE_ASSIGN(out, ELMT_FROM_HH(tbl, (head).hh_head));                     \
   } else {                                                                       \
-    printf("HFIB LOOP IF 0 FALSE\n");\
     (out) = NULL;                                                                \
   }                                                                              \
-  printf("HFIB LOOP A\n");\
   while ((out) != NULL) {                                                        \
-    printf("HFIB LOOP START\n");\
-    printf("(out) @ %p\n", (out));\
-    printf("(out)->hh @ %p\n", &(out)->hh);\
-    printf("(out)->hh.hashv = %u\n", (out)->hh.hashv);\
-    printf("(out)->hh.keylen = %u\n", (out)->hh.keylen);\
-    printf("(out)->hh.hh_next @ %p\n", (out)->hh.hh_next);\
     if ((out)->hh.hashv == (hashval) && (out)->hh.keylen == (keylen_in)) {       \
-      printf("HFIB LOOP IF 1 TRUE\n");\
       if (HASH_KEYCMP((out)->hh.key, keyptr, keylen_in) == 0) {                  \
-        printf("HFIB LOOP IF 2 TRUE\n");\
         break;                                                                   \
       }                                                                          \
     }                                                                            \
     if ((out)->hh.hh_next != NULL) {                                             \
-      printf("HFIB LOOP IF 3 TRUE\n");\
       DECLTYPE_ASSIGN(out, ELMT_FROM_HH(tbl, (out)->hh.hh_next));                \
     } else {                                                                     \
-      printf("HFIB LOOP IF 3 FALSE\n");\
       (out) = NULL;                                                              \
     }                                                                            \
-    printf("HFIB LOOP END\n");\
   }                                                                              \
-  printf("HASH_FIND_IN_BKT OUT\n");\
 } while (0)
 
 /* add an item to a bucket  */
