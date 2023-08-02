@@ -77,7 +77,7 @@ test_timing(size_t cache_size,
 
     /* Cache being tested. */
     cache_t cache;
-    assert(cache_init(&cache, cache_size, 0, POLICY_MINIO) == 0);
+    assert(cache_init(&cache, cache_size, max_size, 0, POLICY_MINIO) == 0);
 
     /* Cold accesses. */
     for (int i = 0; i < n_files; i++) {
@@ -136,7 +136,7 @@ test_integrity(size_t cache_size,
 
     /* Cache being tested. */
     cache_t cache;
-    assert(cache_init(&cache, cache_size, 0, POLICY_MINIO) == 0);
+    assert(cache_init(&cache, cache_size, max_size, 0, POLICY_MINIO) == 0);
 
     /* Cold accesses. */
     for (int i = 0; i < n_files; i++) {
