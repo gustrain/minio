@@ -243,7 +243,7 @@ cache_init(cache_t *cache,
 
    /* Get log2 of the number of entries. */
    int max_ht_entries_copy = cache->max_ht_entries;
-   int max_ht_entries_log2 = 0;
+   int max_ht_entries_log2 = 1; /* Start at one to always have 2x margin. */
    while (max_ht_entries_copy >>= 1) ++max_ht_entries_log2;
    HASH_MAKE_TABLE(hh, cache->ht, 0, cache->max_ht_entries, max_ht_entries_log2);
 
