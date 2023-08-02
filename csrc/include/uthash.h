@@ -341,8 +341,6 @@ do {                                                                            
 
 #define HASH_ADD_TO_TABLE(hh,head,keyptr,keylen_in,hashval,add,oomed)            \
 do {                                                                             \
-  printf("HASH_ADD_TO_TABLE... keylen_in = %u", keylen_in);\
-  assert(keylen_in < 256);\
   unsigned _ha_bkt;                                                              \
   (head)->hh.tbl->num_items++;                                                   \
   HASH_TO_BKT(hashval, (head)->hh.tbl->num_buckets, _ha_bkt);                    \
@@ -408,7 +406,6 @@ do {                                                                            
   (add)->hh.key = (const void*) (keyptr);                                        \
   (add)->hh.keylen = (unsigned) (keylen_in);                                     \
   if (!(head)) {                                                                 \
-    printf("BAD STUFF!\n");\
     (add)->hh.next = NULL;                                                       \
     (add)->hh.prev = NULL;                                                       \
     HASH_MAKE_TABLE(hh, add, _ha_oomed, HASH_INITIAL_NUM_BUCKETS,                \
