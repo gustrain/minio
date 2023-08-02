@@ -774,6 +774,9 @@ do {                                                                            
   printf("HFIB LOOP A\n");\
   while ((out) != NULL) {                                                        \
     printf("HFIB LOOP START\n");\
+    printf("(out)->hh = %p\n", (out)->hh);\
+    printf("(out)->hh.hashv = %lu\n", (out)->hh.hashv);\
+    printf("(out)->hh.keylen = %lu\n", (out)->hh.keylen);\
     if ((out)->hh.hashv == (hashval) && (out)->hh.keylen == (keylen_in)) {       \
       printf("HFIB LOOP IF 1 TRUE\n");\
       if (HASH_KEYCMP((out)->hh.key, keyptr, keylen_in) == 0) {                  \
