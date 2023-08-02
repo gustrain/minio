@@ -84,6 +84,7 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
 
    /* Insert into hash table. */
    pthread_spin_lock(&cache->ht_lock);
+   printf("adding path of length %d\n", strlen(path));
    HASH_ADD_STR(cache->ht, path, entry);
    pthread_spin_unlock(&cache->ht_lock);
 
