@@ -765,10 +765,13 @@ do {                                                                            
 do {                                                                             \
   printf("HASH_FIND_IN_BKT IN\n");\
   if ((head).hh_head != NULL) {                                                  \
+    printf("HFIB LOOP IF 0 TRUE\n");\
     DECLTYPE_ASSIGN(out, ELMT_FROM_HH(tbl, (head).hh_head));                     \
   } else {                                                                       \
+    printf("HFIB LOOP IF 0 FALSE\n");\
     (out) = NULL;                                                                \
   }                                                                              \
+  printf("HFIB LOOP A\n");\
   while ((out) != NULL) {                                                        \
     printf("HFIB LOOP START\n");\
     if ((out)->hh.hashv == (hashval) && (out)->hh.keylen == (keylen_in)) {       \
