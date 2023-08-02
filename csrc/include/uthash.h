@@ -71,7 +71,9 @@ do {                                                                            
 #else
 #define DECLTYPE_ASSIGN(dst,src)                                                 \
 do {                                                                             \
+  printf("DECLTYPE_ASSIGN IN\n");\
   (dst) = DECLTYPE(dst)(src);                                                    \
+  printf("DECLTYPE_ASSIGN OUT\n");\
 } while (0)
 #endif
 
@@ -165,9 +167,12 @@ do {                                                                            
     printf("HASH_TO_BKT IN\n");\
     HASH_TO_BKT(hashval, (head)->hh.tbl->num_buckets, _hf_bkt);                  \
     printf("HASH_TO_BKT OUT\n");\
+    printf("HASH_BLOOM_TEST IN\n")
     if (HASH_BLOOM_TEST((head)->hh.tbl, hashval) != 0) {                         \
+      printf("HASH_BLOOM_TEST OUT (TRUE)\n");\
       HASH_FIND_IN_BKT((head)->hh.tbl, hh, (head)->hh.tbl->buckets[ _hf_bkt ], keyptr, keylen, hashval, out); \
     }                                                                            \
+    printf("HASH_BLOOM_TEST OUT (FALSE)");\
   }                                                                              \
   printf("HASH_FIND_BYHASHVALUE_OUT\n");\
 } while (0)
@@ -758,6 +763,7 @@ do {                                                                            
 /* iterate over items in a known bucket to find desired item */
 #define HASH_FIND_IN_BKT(tbl,hh,head,keyptr,keylen_in,hashval,out)               \
 do {                                                                             \
+  printf("HASH_FIND_IN_BKT IN\n");\
   if ((head).hh_head != NULL) {                                                  \
     DECLTYPE_ASSIGN(out, ELMT_FROM_HH(tbl, (head).hh_head));                     \
   } else {                                                                       \
@@ -775,6 +781,7 @@ do {                                                                            
       (out) = NULL;                                                              \
     }                                                                            \
   }                                                                              \
+  printf("HASH_FIND_IN_BKT OUT\n");\
 } while (0)
 
 /* add an item to a bucket  */
