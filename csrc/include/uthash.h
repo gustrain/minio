@@ -770,16 +770,22 @@ do {                                                                            
     (out) = NULL;                                                                \
   }                                                                              \
   while ((out) != NULL) {                                                        \
+    printf("HFIB LOOP START\n");\
     if ((out)->hh.hashv == (hashval) && (out)->hh.keylen == (keylen_in)) {       \
+      printf("HFIB LOOP IF 1 TRUE\n");\
       if (HASH_KEYCMP((out)->hh.key, keyptr, keylen_in) == 0) {                  \
+        printf("HFIB LOOP IF 2 TRUE\n");\
         break;                                                                   \
       }                                                                          \
     }                                                                            \
     if ((out)->hh.hh_next != NULL) {                                             \
+      printf("HFIB LOOP IF 3 TRUE\n");\
       DECLTYPE_ASSIGN(out, ELMT_FROM_HH(tbl, (out)->hh.hh_next));                \
     } else {                                                                     \
+      printf("HFIB LOOP IF 3 FALSE\n");\
       (out) = NULL;                                                              \
     }                                                                            \
+    printf("HFIB LOOP END\n");\
   }                                                                              \
   printf("HASH_FIND_IN_BKT OUT\n");\
 } while (0)
