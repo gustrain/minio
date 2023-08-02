@@ -146,6 +146,7 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
    size_t bytes = 0;
    int status = cache_load(cache, path, data, &bytes, max_size);
    if (status < 0) {
+      /* Don't fail if the error was the file not being cached. */
       if (status != -ENODATA) {
          return (ssize_t) status;
       }
@@ -181,8 +182,7 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
    close(fd);
 
    /* Cache the data. If this call fails, the data didn't fit. */
-   int status = cache_store(cache, path, data, size);
-   if (status < 0) {
+   if (cache_store(cache, path, data, size) < 0) {
       STAT_INC(cache, n_miss_capacity);
    } else {
       STAT_INC(cache, n_miss_cold);
