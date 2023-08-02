@@ -104,7 +104,10 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
    memcpy(entry->ptr, data, size);
 
    HASH_ITER(hh, cache->ht, el, tmp) {
-      assert(el->hh.keylen < 128);
+      if (el->hh.keylen >= 128) {
+         printf("el = %p, el->hh = %p, el->hh.keylen = %u\n", el, &el->hh, el->hh.keylen);
+         assert(false);
+      }
    }
 
    /* Insert into hash table. */
