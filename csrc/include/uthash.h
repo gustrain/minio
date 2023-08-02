@@ -774,6 +774,7 @@ do {                                                                            
   printf("HFIB LOOP A\n");\
   while ((out) != NULL) {                                                        \
     printf("HFIB LOOP START\n");\
+    printf("(out) @ %p\n", (out));\
     printf("(out)->hh @ %p\n", &(out)->hh);\
     printf("(out)->hh.hashv = %u\n", (out)->hh.hashv);\
     printf("(out)->hh.keylen = %u\n", (out)->hh.keylen);\
