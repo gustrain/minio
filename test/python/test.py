@@ -152,10 +152,10 @@ def main():
 
     # Read everything with various cache sizes and ensure everything matches.
     configs = [
-        (64  * MB, 8 * MB, average_file_size),
-        (128 * MB, 8 * MB, average_file_size),
-        (256 * MB, 8 * MB, average_file_size),
-        (512 * MB, 8 * MB, average_file_size),
+        (64  * MB, 16 * MB, average_file_size),
+        (128 * MB, 16 * MB, average_file_size),
+        (256 * MB, 16 * MB, average_file_size),
+        (512 * MB, 16 * MB, average_file_size),
     ]
 
     # print("-- testing integrity --")

@@ -58,6 +58,11 @@ PyCache_dealloc(PyObject *self)
         if (cache->cache->data != NULL) {
             munmap(cache->cache->data, cache->cache->size);
         }
+
+        /* Free the memory allocated for the hash table. */
+        if (cache->cache->ht_entries != NULL) {
+            munmap(cache->ht_entries, (cache->max_ht_entries + 1) * sizeof(hash_entry_t));
+        }
         
         /* Free the shared memory allocated for the cache struct. */
         munmap(cache->cache, sizeof(cache_t));
