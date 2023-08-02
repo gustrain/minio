@@ -92,7 +92,15 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
 
    /* Figure out where the data goes. */
    entry->size = size;
-   entry->ptr = cache->data + atomic_fetch_add(&cache->used, size);
+   size_t used = atomic_fetch_add(&cache->used, size);
+   entry->ptr = cache->data + used;
+
+   /* Check that this data is being placed in-range before continuing. If we're
+      out-of-range, undo the expansion and abort. */
+   if (used + size > cache->size) {
+      atomic_fetch_sub(&cache->used, size);
+      return -ENOMEM;
+   }
 
    HASH_ITER(hh, cache->ht, el, tmp) {
       assert(el->hh.keylen < 128);
