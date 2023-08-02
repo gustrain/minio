@@ -167,7 +167,7 @@ do {                                                                            
     printf("HASH_TO_BKT IN\n");\
     HASH_TO_BKT(hashval, (head)->hh.tbl->num_buckets, _hf_bkt);                  \
     printf("HASH_TO_BKT OUT\n");\
-    printf("HASH_BLOOM_TEST IN\n")
+    printf("HASH_BLOOM_TEST IN\n");\
     if (HASH_BLOOM_TEST((head)->hh.tbl, hashval) != 0) {                         \
       printf("HASH_BLOOM_TEST OUT (TRUE)\n");\
       HASH_FIND_IN_BKT((head)->hh.tbl, hh, (head)->hh.tbl->buckets[ _hf_bkt ], keyptr, keylen, hashval, out); \
