@@ -69,6 +69,11 @@ cache_contains(cache_t *cache, char *path)
 int
 cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
 {
+   hash_entry_t *el, *tmp;
+   HASH_ITER(hh, cache->ht, el, tmp) {
+      assert(el->hh.keylen < 128);
+   }
+
    /* Acquire an entry. */
    size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
    if (n >= cache->max_ht_entries) {
@@ -76,22 +81,37 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
    }
    hash_entry_t *entry = &cache->ht_entries[n];
 
+   HASH_ITER(hh, cache->ht, el, tmp) {
+      assert(el->hh.keylen < 128);
+   }
+
    /* Copy the path into the entry. */
    strncpy(entry->path, path, MAX_PATH_LENGTH);
+
+   HASH_ITER(hh, cache->ht, el, tmp) {
+      assert(el->hh.keylen < 128);
+   }
 
    /* Figure out where the data goes. */
    entry->size = size;
    entry->ptr = cache->data + atomic_fetch_add(&cache->used, size);
 
+   HASH_ITER(hh, cache->ht, el, tmp) {
+      assert(el->hh.keylen < 128);
+   }
+
    /* Copy data to the cache. */
    memcpy(entry->ptr, data, size);
+
+   HASH_ITER(hh, cache->ht, el, tmp) {
+      assert(el->hh.keylen < 128);
+   }
 
    /* Insert into hash table. */
    pthread_spin_lock(&cache->ht_lock);
    HASH_ADD_STR(cache->ht, path, entry);
    pthread_spin_unlock(&cache->ht_lock);
 
-   hash_entry_t *el, *tmp;
    HASH_ITER(hh, cache->ht, el, tmp) {
       assert(el->hh.keylen < 128);
    }
