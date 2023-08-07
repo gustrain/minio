@@ -1,6 +1,24 @@
-/* Author:  Gus Waldspurger
+/* MIT License
 
-   MinIO file cache tests.
+   Copyright (c) 2023 Gus Waldspurger
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
    */
 
 #include "../../csrc/minio/minio.h"
@@ -59,7 +77,7 @@ test_timing(size_t cache_size,
 
     /* Cache being tested. */
     cache_t cache;
-    assert(cache_init(&cache, cache_size, 0, POLICY_MINIO) == 0);
+    assert(cache_init(&cache, cache_size, max_size, 0, POLICY_MINIO) == 0);
 
     /* Cold accesses. */
     for (int i = 0; i < n_files; i++) {
@@ -118,13 +136,12 @@ test_integrity(size_t cache_size,
 
     /* Cache being tested. */
     cache_t cache;
-    assert(cache_init(&cache, cache_size, 0, POLICY_MINIO) == 0);
+    assert(cache_init(&cache, cache_size, max_size, 0, POLICY_MINIO) == 0);
 
     /* Cold accesses. */
     for (int i = 0; i < n_files; i++) {
         ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
         assert(size > 0);
-        // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
 
@@ -132,7 +149,6 @@ test_integrity(size_t cache_size,
     for (int i = 0; i < n_files; i++) {
         ssize_t size = cache_read(&cache, filepaths[i], data, max_size);
         assert(size > 0);
-        // assert(verify_integrity(filepaths[i], data, size));
         verify_integrity(filepaths[i], data, size);
     }
 
@@ -182,4 +198,6 @@ main(int argc, char **argv)
     }
 
     printf("All tests OK.\n");
+
+    return EXIT_SUCCESS;
 }

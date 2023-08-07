@@ -28,6 +28,7 @@
 
 #include "../include/uthash.h"
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <sys/mman.h>
 
@@ -43,9 +44,9 @@ typedef enum {
 /* Hash table entry. Maps filepath to cached data. An entry must be in the hash
    table IFF the corresponding file is cached. */
 typedef struct {
-    char    filepath[MAX_PATH_LENGTH + 1];  /* Key. Filepath of file. */
-    void   *ptr;                            /* Pointer to this file's data. */
-    size_t  size;                           /* Size of file data in bytes. */
+    char    path[MAX_PATH_LENGTH + 1];  /* Key. Filepath of file. */
+    void   *ptr;                        /* Pointer to this file's data. */
+    size_t  size;                       /* Size of file data in bytes. */
 
     UT_hash_handle hh;
 } hash_entry_t;
@@ -79,9 +80,11 @@ typedef struct {
     pthread_spinlock_t ht_lock;
 } cache_t;
 
-
+bool cache_contains(cache_t *cache, char *path);
+int cache_store(cache_t *cache, char *path, uint8_t *data, size_t size);
+int cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max);
 ssize_t cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size);
 void cache_flush(cache_t *cache);
-int cache_init(cache_t *cache, size_t size, size_t max_item_size, policy_t policy);
+int cache_init(cache_t *cache, size_t size, size_t max_item_size, size_t avg_item_size, policy_t policy);
 
 #endif

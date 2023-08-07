@@ -58,6 +58,12 @@ PyCache_dealloc(PyObject *self)
         if (cache->cache->data != NULL) {
             munmap(cache->cache->data, cache->cache->size);
         }
+
+        /* Free the memory allocated for the hash table. */
+        if (cache->cache->ht_entries != NULL) {
+            munmap(cache->cache->ht_entries,
+                   sizeof(hash_entry_t) * (cache->cache->max_ht_entries + 1));
+        }
         
         /* Free the shared memory allocated for the cache struct. */
         munmap(cache->cache, sizeof(cache_t));
@@ -81,23 +87,37 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     /* Parse arguments. */
     size_t size, max_usable_file_size;
     size_t max_cacheable_file_size = 0; /* If zero, defaults to MAX_USABLE_FILE_SIZE. */
-    static char *kwlist[] = {"size", "max_usable_file_size", "max_cacheable_file_size", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk|k", kwlist,
+    size_t average_file_size = 0;
+    static char *kwlist[] = {
+        "size", "max_usable_file_size", "max_cacheable_file_size",
+        "average_file_size", NULL
+    };
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "kk|kk", kwlist,
                                      &size,
                                      &max_usable_file_size,
-                                     &max_cacheable_file_size)) {
+                                     &max_cacheable_file_size,
+                                     &average_file_size)) {
         PyErr_SetString(PyExc_Exception, "missing/invalid argument");
         return -1;
     }
 
+    /* Default to max usable file size (i.e., no-op). */
+    if (max_cacheable_file_size == 0) {
+        max_cacheable_file_size = max_usable_file_size;
+    }
+
     /* If specified, the max usable item size must be <= max cacheable size. */
-    if (max_cacheable_file_size != 0 && max_cacheable_file_size > max_usable_file_size) {
+    if (max_cacheable_file_size > max_usable_file_size) {
         PyErr_SetString(PyExc_Exception, "max_cacheable_file_size must be <= max_usable_file_size");
         return -1;
     }
 
     /* Set up the cache struct as shared memory. */
     cache->cache = mmap_alloc(sizeof(cache_t));
+    if (cache == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "unable to allocate cache_t struct");
+        return -1;
+    }
 
     /* Set up the copy area. */
     cache->max_usable_file_size = max_usable_file_size;
@@ -109,7 +129,11 @@ PyCache_init(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     /* Initialize the cache. */
-    int status = cache_init(cache->cache, size, max_cacheable_file_size, POLICY_MINIO);
+    int status = cache_init(cache->cache,
+                            size,
+                            max_cacheable_file_size,
+                            average_file_size,
+                            POLICY_MINIO);
     if (status < 0) {
         switch (status) {
             case -ENOMEM:
@@ -140,6 +164,88 @@ PyCache_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *) self;
 }
 
+/* PyCache method to check if a filepath is cached. */
+static PyObject *
+PyCache_contains(PyCache *self, PyObject *args, PyObject *kwds)
+{
+    /* Parse arguments. */
+    char *filepath;
+    static char *kwlist[] = {"filepath", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist, &filepath)) {
+        PyErr_SetString(PyExc_Exception, "missing/invalid argument");
+        return NULL;
+    }
+
+    return PyBool_FromLong((long) cache_contains(self->cache, filepath));
+}
+
+/* PyCache method to explicitly cache data. Returns True on success, False on
+   failure. */
+static PyObject *
+PyCache_store(PyCache *self, PyObject *args, PyObject *kwds)
+{
+    /* Parse arguments. */
+    char *filepath;
+    size_t bytes;
+    Py_buffer buf;
+    static char *kwlist[] = {"filepath", "bytes", "data",  NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "sks*", kwlist, &filepath, &bytes,&buf)) {
+        PyErr_SetString(PyExc_Exception, "missing/invalid argument");
+        return NULL;
+    }
+
+    /* Don't cache things that are bigger than we allow. */
+    if (bytes > self->max_cacheable_file_size) {
+        return PyBool_FromLong(0);
+    }
+
+
+    int status = cache_store(self->cache, filepath, buf.buf, bytes);
+    if (status < 0) {
+        return PyBool_FromLong(0);
+    }
+
+    return PyBool_FromLong(1);
+}
+
+/* PyCache method to load from cache without issuing IO on miss. Returns a tuple
+   (data, size) on success. Returns None on failure. */
+static PyObject *
+PyCache_load(PyCache *self, PyObject *args, PyObject *kwds)
+{
+    /* Parse arguments. */
+
+    char *filepath;
+    static char *kwlist[] = {"filepath", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist, &filepath)) {
+        PyErr_SetString(PyExc_Exception, "missing/invalid argument");
+        return NULL;
+    }
+
+    size_t size = 0;
+    int status = cache_load(self->cache,
+                            filepath,
+                            self->temp,
+                            &size,
+                            self->max_cacheable_file_size);
+    if (status < 0) {
+        PyErr_Format(PyExc_Exception, "load failed; %s", strerror(-status));
+        return NULL;
+    }
+
+    PyObject *bytes = PyBytes_FromStringAndSize((char *) self->temp, size);
+    PyObject *size_ = PyLong_FromLong(size);
+    PyObject *out = PyTuple_Pack(2, bytes, size_);
+
+    /* Because PyTuple_Pack increments the reference counter for all inputs,
+       we must decrement the refcounts to prevent a leak where the count is >1
+       when we return. */
+    Py_DECREF(bytes);
+    Py_DECREF(size_);
+
+    return out;
+}
+
 /* PyCache read/get method. Returns (data, size) as a tuple. */
 static PyObject *
 PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
@@ -157,7 +263,7 @@ PyCache_read(PyCache *self, PyObject *args, PyObject *kwds)
                               filepath,
                               self->temp,
                               self->max_usable_file_size);
-    if (size < 0l) {
+    if (size < 0) {
         switch (size) {
             case -EINVAL:
                 PyErr_SetString(PyExc_MemoryError, "insufficient buffer size");
@@ -209,19 +315,55 @@ PyCache_get_size(PyCache *self, PyObject *args, PyObject *kwds)
 static PyObject *
 PyCache_get_used(PyCache *self, PyObject *args, PyObject *kwds)
 {
-    // pthread_mutex_lock(&self->cache->meta_lock);
     size_t used = self->cache->used;
-    // pthread_mutex_unlock(&self->cache->meta_lock);
 
     return PyLong_FromUnsignedLong(used);
 }
 
 /* PyCache methods. */
 static PyMethodDef PyCache_methods[] = {
-    {"read_file", (PyCFunction) PyCache_read, METH_VARARGS | METH_KEYWORDS, "Read a file through the cache."},
-    {"flush", (PyCFunction) PyCache_flush, METH_NOARGS, "Flush the cache."},
-    {"get_size", (PyCFunction) PyCache_get_size, METH_NOARGS, "Get size of cache in bytes."},
-    {"get_used", (PyCFunction) PyCache_get_used, METH_NOARGS, "Get number of bytes used in cache."},
+    {
+        "contains",
+        (PyCFunction) PyCache_contains,
+        METH_VARARGS | METH_KEYWORDS,
+        "Check if the filepath is cached."
+    },
+    {
+        "load",
+        (PyCFunction) PyCache_load,
+        METH_VARARGS | METH_KEYWORDS,
+        "Load the filepath if it's cached (don't read on miss)."
+    },
+    {
+        "store",
+        (PyCFunction) PyCache_store,
+        METH_VARARGS | METH_KEYWORDS,
+        "Cache data at the given filepath."
+    },
+    {
+        "read",
+        (PyCFunction) PyCache_read,
+        METH_VARARGS | METH_KEYWORDS,
+        "Read a file through the cache."
+    },
+    {
+        "flush",
+        (PyCFunction) PyCache_flush,
+        METH_NOARGS,
+        "Flush the cache."
+    },
+    {
+        "get_size",
+        (PyCFunction) PyCache_get_size,
+        METH_NOARGS,
+        "Get size of cache in bytes."
+    },
+    {
+        "get_used",
+        (PyCFunction) PyCache_get_used,
+        METH_NOARGS,
+        "Get number of bytes used in cache."
+    },
     {NULL} /* Sentinel. */
 };
 

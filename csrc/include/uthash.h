@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>         /* memcmp, memset, strlen */
 #include <stddef.h>         /* ptrdiff_t */
 #include <stdlib.h>         /* exit */
+#include <assert.h>
 #include "../utils/utils.h" /* mmap_alloc */
 
 #if defined(HASH_DEFINE_OWN_STDINT) && HASH_DEFINE_OWN_STDINT
@@ -517,8 +518,6 @@ do {                                                                            
  * This is for uthash developer only; it compiles away if HASH_DEBUG isn't defined.
  */
 #ifdef HASH_DEBUG
-#include <stdio.h>   /* fprintf, stderr */
-#define HASH_OOPS(...) do { fprintf(stderr, __VA_ARGS__); exit(-1); } while (0)
 #define HASH_FSCK(hh,head,where)                                                 \
 do {                                                                             \
   struct UT_hash_handle *_thh;                                                   \
