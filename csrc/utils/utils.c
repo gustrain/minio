@@ -29,6 +29,14 @@
 
 #define _GNU_SOURCE
 
+/* Simple uint64->uint64 hash function from Stack Overflow, id 12996028. */
+uint64_t
+utils_hash(uint64_t x) {
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ul;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111ebul;
+    x = x ^ (x >> 31);
+    return x;
+}
 
 /* Allocate shared, page-locked memory, using an anonymous mmap. If this process
    forks, and all "shared" state was allocated using this function, everything

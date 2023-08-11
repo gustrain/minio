@@ -2,7 +2,7 @@ from distutils.core import setup, Extension
 
 MAJOR = 0
 MINOR = 3
-MICRO = 2
+MICRO = 3
 VERSION = '{}.{}.{}'.format(MAJOR, MINOR, MICRO)
 
 with open('README.md', 'r') as f:
@@ -19,16 +19,20 @@ setup(name = 'MinIO Cache',
       author_email = 'gus@waldspurger.com',
       license = 'MIT',
       ext_modules = [
-            Extension('minio',
-                      sources = [
-                          'csrc/miniomodule/miniomodule.c',
-                          'csrc/minio/minio.c',
-                          'csrc/utils/utils.c'
-                      ],
-                      extra_compile_args = [
-                          '-g',
-                      ],
-                      undef_macros = [
-                          "NDEBUG"
-                      ])
+          Extension('minio',
+                    sources = [
+                        'csrc/miniomodule/miniomodule.c',
+                        'csrc/minio/minio.c',
+                        'csrc/utils/utils.c'
+                    ],
+                    extra_link_args = [
+                        '-lpthread',
+                        '-lrt',
+                    ],
+                    extra_compile_args = [
+                        '-g',
+                    ],
+                    undef_macros = [
+                        "NDEBUG"
+                    ])
       ])

@@ -32,7 +32,7 @@
 #include <pthread.h>
 #include <sys/mman.h>
 
-#define MAX_PATH_LENGTH 128
+#define MAX_PATH_LEN 128
 
 /* Cache replacement policy. */
 typedef enum {
@@ -44,9 +44,14 @@ typedef enum {
 /* Hash table entry. Maps filepath to cached data. An entry must be in the hash
    table IFF the corresponding file is cached. */
 typedef struct {
-    char    path[MAX_PATH_LENGTH + 1];  /* Key. Filepath of file. */
-    void   *ptr;                        /* Pointer to this file's data. */
-    size_t  size;                       /* Size of file data in bytes. */
+    char      path[MAX_PATH_LEN + 1];       /* Key. Filepath of file. */
+    char      shm_path[MAX_PATH_LEN + 2];   /* PATH but with '/' replaced with
+                                               '_' to name the shm object. */
+    void     *ptr;                          /* Pointer to this file's data. */
+    size_t    size;                         /* Size of file data in bytes. */
+    int       shm_fd;                       /* SHM object file descriptor. */
+    uint64_t  lock_id;                      /* ID of lock in ENTRY_LOCKS array
+                                               for this entry's protection. */
 
     UT_hash_handle hh;
 } hash_entry_t;
@@ -63,11 +68,11 @@ typedef struct {
                                    size of zero indicates there is no limit. */
 
     /* State. */
-    atomic_size_t used;             /* Number of bytes cached. */
-    uint8_t      *data;             /* First byte of SIZE bytes of memory. */
-    hash_entry_t *ht_entries;       /* Memory used for HT entries. */
-    atomic_size_t n_ht_entries;     /* Current number of HT entries. */
-    hash_entry_t *ht;               /* Hash table, maps filename to data. */
+    atomic_size_t  used;            /* Number of bytes cached. */
+    uint8_t       *data;            /* First byte of SIZE bytes of memory. */
+    hash_entry_t  *ht_entries;      /* Memory used for HT entries. */
+    atomic_size_t  n_ht_entries;    /* Current number of HT entries. */
+    hash_entry_t  *ht;              /* Hash table, maps filename to data. */
 
     /* Statistics. */
     atomic_size_t n_accs;
@@ -77,7 +82,12 @@ typedef struct {
     atomic_size_t n_fail;
 
     /* Synchronization. */
-    pthread_spinlock_t ht_lock;
+    pthread_spinlock_t  ht_lock;        /* Protects hash table. */
+    pthread_spinlock_t *entry_locks;    /* Protects hash table entries. Indexed
+                                           using a hash function to provide fair
+                                           coverage. Size of the array decides
+                                           maximum parallelism. */
+    size_t              n_entry_locks;  /* Number of locks in ENTRY_LOCKS. */
 } cache_t;
 
 bool cache_contains(cache_t *cache, char *path);
@@ -86,5 +96,6 @@ int cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t m
 ssize_t cache_read(cache_t *cache, char *filepath, void *data, uint64_t max_size);
 void cache_flush(cache_t *cache);
 int cache_init(cache_t *cache, size_t size, size_t max_item_size, size_t avg_item_size, policy_t policy);
+void cache_destroy(cache_t *c);
 
 #endif

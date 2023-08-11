@@ -23,6 +23,7 @@
 
 #ifndef __UTILS_H__
 
+#include <stdint.h>
 #include <stdio.h>
 
 #define DEBUG 0
@@ -35,7 +36,9 @@
     do { if (ALT_DEBUG) fprintf(stderr, "[%8s:%-5d] " fmt, __FILE__, \
                                 __LINE__, ## __VA_ARGS__); } while (0)
 
+#define MAX(a, b) (a) > (b) ? (a) : (b)
 
+uint64_t utils_hash(uint64_t x);
 void *mmap_alloc(size_t size);
 void mmap_free(void *ptr, size_t size);
 
