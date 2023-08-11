@@ -31,7 +31,7 @@
 
 /* Simple uint64->uint64 hash function from Stack Overflow, id 12996028. */
 uint64_t
-hash(uint64_t x) {
+utils_hash(uint64_t x) {
     x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ul;
     x = (x ^ (x >> 27)) * 0x94d049bb133111ebul;
     x = x ^ (x >> 31);
