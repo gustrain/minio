@@ -144,7 +144,6 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
     if (e == NULL) {
         return -ENODATA;
     }
-    pthread_spin_lock(&e->lock);
 
     /* Open the shm object containing the file data. Because there was a hit in
        the hashtable, an shm object with PATH must exist, and thus if this call
@@ -162,7 +161,6 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
     /* Copy the data into the user's DATA buffer, but don't overflow it. */
     *size = e->size;
     if (e->size > max) {
-        pthread_spin_unlock(&e->lock);
         return -EINVAL;
     }
     memcpy(data, ptr, e->size);
@@ -170,7 +168,6 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
     /* Close our references to the file data. */
     close(fd);
     munmap(ptr, e->size);
-    pthread_spin_unlock(&e->lock);
 
     return 0;
 }
@@ -302,10 +299,6 @@ cache_init(cache_t *cache,
 
     /* Synchronization initialization. */
     assert(!pthread_spin_init(&cache->ht_lock, PTHREAD_PROCESS_SHARED));
-    for (size_t i = 0; i < cache->n_ht_entries; i++) {
-        assert(!pthread_spin_init(&cache->ht_entries[i].lock,
-                                  PTHREAD_PROCESS_SHARED));
-    }
 
     /* Get log2 of the number of entries. */
     int max_ht_entries_copy = cache->max_ht_entries;
