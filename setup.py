@@ -19,16 +19,20 @@ setup(name = 'MinIO Cache',
       author_email = 'gus@waldspurger.com',
       license = 'MIT',
       ext_modules = [
-            Extension('minio',
-                      sources = [
-                          'csrc/miniomodule/miniomodule.c',
-                          'csrc/minio/minio.c',
-                          'csrc/utils/utils.c'
-                      ],
-                      extra_compile_args = [
-                          '-lpthread', '-lrt', '-g',
-                      ],
-                      undef_macros = [
-                          "NDEBUG"
-                      ])
+          Extension('minio',
+                    sources = [
+                        'csrc/miniomodule/miniomodule.c',
+                        'csrc/minio/minio.c',
+                        'csrc/utils/utils.c'
+                    ],
+                    extra_link_args = [
+                        '-lpthread',
+                        '-lrt',
+                    ],
+                    extra_compile_args = [
+                        '-g',
+                    ],
+                    undef_macros = [
+                        "NDEBUG"
+                    ])
       ])
