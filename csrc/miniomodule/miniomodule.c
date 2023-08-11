@@ -51,23 +51,9 @@ PyCache_dealloc(PyObject *self)
         return;
     }
 
-    /* Only free memory in the cache struct if it's actually been allocated. */
+    /* Destroy the MinIO cache. */
     if (cache->cache != NULL) {
-        /* Free the memory allocated for the hash table. */
-        if (cache->cache->ht_entries != NULL) {
-            munmap(cache->cache->ht_entries,
-                   sizeof(hash_entry_t) * (cache->cache->max_ht_entries + 1));
-        }
-
-        /* Free the memory allocated for spinlocks. */
-        if (cache->cache->entry_locks != NULL) {
-            munmap(cache->cache->entry_locks,
-                   sizeof(pthread_spinlock_t) * cache->cache->n_entry_locks);
-        }
-
-        /* Free each active entry's shm object. (TODO). */
-        
-        /* Free the shared memory allocated for the cache struct. */
+        cache_destroy(cache->cache);
         munmap(cache->cache, sizeof(cache_t));
     }
 

@@ -54,13 +54,15 @@ bool
 cache_contains(cache_t *c, char *path)
 {
     hash_entry_t *entry = NULL;
+    pthread_spin_lock(&c->ht_lock);
     HASH_FIND_STR(c->ht, path, entry);
+    pthread_spin_unlock(&c->ht_lock);
 
     return (entry != NULL);
 }
 
 /* Store DATA into CACHE indexed by PATH. On success, returns 0. On failure,
-    returns negative errno value. */
+   returns negative errno value. */
 int
 cache_store(cache_t *c, char *path, uint8_t *data, size_t size)
 {
@@ -82,7 +84,7 @@ cache_store(cache_t *c, char *path, uint8_t *data, size_t size)
     entry->ptr = c->data + used;
 
     /* Check that this data is being placed in-range before continuing. If we're
-        out-of-range, undo the expansion and abort. */
+       out-of-range, undo the expansion and abort. */
     if (used + size > c->size) {
         atomic_fetch_sub(&c->used, size);
         return -ENOMEM;
@@ -135,13 +137,14 @@ cache_store(cache_t *c, char *path, uint8_t *data, size_t size)
 }
 
 /* Load the data at PATH in CACHE into DATA (a maximum of MAX bytes), storing
-    the size of the file into SIZE. A cache miss is considered a failure
-    (-ENODATA is returned without any IO being issued). On success returns 0.
-    On failure returns negative errno. */
+   the size of the file into SIZE. A cache miss is considered a failure
+   (-ENODATA is returned without any IO being issued). On success returns 0.
+   On failure returns negative errno. */
 int
 cache_load(cache_t *c, char *path, uint8_t *data, size_t *size, size_t max)
 {
     hash_entry_t *entry = NULL;
+    pthread_spin_lock(&c->ht_lock);
     HASH_FIND_STR(c->ht, path, entry);
     if (entry == NULL) {
         return -ENODATA;
@@ -149,6 +152,7 @@ cache_load(cache_t *c, char *path, uint8_t *data, size_t *size, size_t max)
 
     pthread_spinlock_t *lock = &c->entry_locks[entry->lock_id];
     pthread_spin_lock(lock);
+    pthread_spin_unlock(&c->ht_lock);
 
     /* Open the shm object containing the file data. Because there was a hit in
        the hashtable, an shm object with PATH must exist, and thus if this call
@@ -180,18 +184,18 @@ cache_load(cache_t *c, char *path, uint8_t *data, size_t *size, size_t max)
 }
 
 /* Read an item from CACHE into DATA, indexed by PATH, and located on the
-    filesystem at PATH. On failure returns errno code with negative value,
-    otherwise returns bytes read on success.
-    
-    DATA must be block-aligned, in order for direct IO to work properly.
-    
-    Note we use atomics to implement thread safe options because pthreads and
-    traditional synchronization primitives are not safe to use with the Python
-    interpreter, and may cause deadlock to occur, regardless of the correctness
-    of primitives' usage.
-    
-    It should be noted that the cache is only thread/process safe so long as the
-    cache entries are only written once (as is the case with MinIO). */
+   filesystem at PATH. On failure returns errno code with negative value,
+   otherwise returns bytes read on success.
+   
+   DATA must be block-aligned, in order for direct IO to work properly.
+   
+   Note we use atomics to implement thread safe options because pthreads and
+   traditional synchronization primitives are not safe to use with the Python
+   interpreter, and may cause deadlock to occur, regardless of the correctness
+   of primitives' usage.
+   
+   It should be noted that the cache is only thread/process safe so long as the
+   cache entries are only written once (as is the case with MinIO). */
 ssize_t
 cache_read(cache_t *c, char *path, void *data, uint64_t max_size)
 {
@@ -230,10 +234,10 @@ cache_read(cache_t *c, char *path, void *data, uint64_t max_size)
     lseek(fd, 0L, SEEK_SET);
 
     /* Note there is an implicit assumption that two threads/processes will not
-        simultaneously attempt to access the same path for the *first* time.
-        For ML data-loader applications this is satisfied, since each element is
-        accessed only once per epoch, however this will present a race condition
-        in applications where this scenario can occur. */
+       simultaneously attempt to access the same path for the *first* time.
+       For ML data-loader applications this is satisfied, since each element is
+       accessed only once per epoch, however this will present a race condition
+       in applications where this scenario can occur. */
 
     /* Read into data. */
     read(fd, data, (size | 0xFFF) + 1);
@@ -249,25 +253,31 @@ cache_read(cache_t *c, char *path, void *data, uint64_t max_size)
     return size;
 }
 
-/* Clear the cache's hash table and reset used bytes to zero.
-
-    Note this function is NOT thread safe, as safety cannot be ensured by the
-    use of atomics alone, and enforcing safety over the update of all touched
-    fields in read would significantly increase the time the spinlock is held for
-    and thus potentially significantly decrease parallel read performance. */
+/* Clear the cache's hash table and reset used bytes to zero. */
 void
-cache_flush(cache_t *cache)
+cache_flush(cache_t *c)
 {
-    /* Clear the HT and the cache metadata. */
-    HASH_CLEAR(hh, cache->ht);
-    cache->n_ht_entries = 0;
-    cache->used = 0;
 
-    /* !!! TODO !!! free all SHM objects and decrease CACHE_SIZE. */
+    /* Free each entry's shm object. */
+    hash_entry_t *entry, *tmp;
+    pthread_spin_lock(&c->ht_lock);
+    HASH_ITER(hh, c->ht_entries, entry, tmp) {
+        pthread_spin_lock(&c->entry_locks[entry->lock_id]);
+        shm_unlink(entry->shm_path);
+        close(entry->shm_fd);
+        munmap(entry->ptr, entry->size);
+        pthread_spin_unlock(&c->entry_locks[entry->lock_id]);
+    }
+
+    /* Clear the HT and the cache metadata. */
+    HASH_CLEAR(hh, c->ht);
+    atomic_store(&c->used, 0);
+    atomic_store(&c->n_ht_entries, 0);
+    pthread_spin_unlock(&c->ht_lock);
 }
 
 /* Initialize a cache CACHE with SIZE bytes and POLICY replacement policy. On
-    success, 0 is returned. On failure, negative errno value is returned. */
+   success, 0 is returned. On failure, negative errno value is returned. */
 int
 cache_init(cache_t *c,
            size_t size,
@@ -289,7 +299,7 @@ cache_init(cache_t *c,
     c->n_miss_cold = 0;
 
     /* Initialize the hash table. Allocate more entries than we'll likely need,
-        since file size may vary, and entries are relatively small. */
+       since file size may vary, and entries are relatively small. */
     c->n_ht_entries = 0;
     if (avg_item_size != 0) {
         c->max_ht_entries = (2 * size) / avg_item_size;
@@ -322,8 +332,35 @@ cache_init(cache_t *c,
     HASH_MAKE_TABLE(hh, c->ht, 0, c->max_ht_entries, max_ht_entries_log2);
 
     /* We don't allocate the memory used to cache actual data yet. This memory
-        will be allocated on-demand using SHM objects named with the entry's key
-        in the hash table. */
+       will be allocated on-demand using SHM objects named with the entry's key
+       in the hash table. */
 
     return 0;
+}
+
+/* Destroy a cache. Deallocates all allocated memory. Not thread safe. */
+void
+cache_destroy(cache_t *c)
+{
+    if (c == NULL) {
+        return;
+    }
+
+    /* Free each entry's shm object. */
+    hash_entry_t *entry, *tmp;
+    HASH_ITER(hh, c->ht_entries, entry, tmp) {
+        shm_unlink(entry->shm_path);
+        close(entry->shm_fd);
+        munmap(entry->ptr, entry->size);
+    }
+
+    /* Free the hash table. */
+    if (c->ht_entries != NULL) {
+        munmap(c->ht_entries, sizeof(hash_entry_t) * c->max_ht_entries + 1);
+    }
+
+    /* Free the spinlocks. */
+    if (c->entry_locks != NULL) {
+        munmap(c->entry_locks, sizeof(pthread_spinlock_t) * c->n_entry_locks);
+    }
 }
