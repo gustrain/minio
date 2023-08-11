@@ -26,7 +26,7 @@ setup(name = 'MinIO Cache',
                           'csrc/utils/utils.c'
                       ],
                       extra_compile_args = [
-                          '-g',
+                          '-lpthread', '-lrt', '-g',
                       ],
                       undef_macros = [
                           "NDEBUG"
