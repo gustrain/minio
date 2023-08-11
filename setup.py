@@ -2,7 +2,7 @@ from distutils.core import setup, Extension
 
 MAJOR = 0
 MINOR = 3
-MICRO = 2
+MICRO = 3
 VERSION = '{}.{}.{}'.format(MAJOR, MINOR, MICRO)
 
 with open('README.md', 'r') as f:

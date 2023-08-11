@@ -47,6 +47,7 @@ typedef struct {
     char    path[MAX_PATH_LENGTH + 1];  /* Key. Filepath of file. */
     void   *ptr;                        /* Pointer to this file's data. */
     size_t  size;                       /* Size of file data in bytes. */
+    int     shm_fd;                     /* File descriptor for SHM object. */
 
     UT_hash_handle hh;
 } hash_entry_t;
@@ -63,11 +64,11 @@ typedef struct {
                                    size of zero indicates there is no limit. */
 
     /* State. */
-    atomic_size_t used;             /* Number of bytes cached. */
-    uint8_t      *data;             /* First byte of SIZE bytes of memory. */
-    hash_entry_t *ht_entries;       /* Memory used for HT entries. */
-    atomic_size_t n_ht_entries;     /* Current number of HT entries. */
-    hash_entry_t *ht;               /* Hash table, maps filename to data. */
+    atomic_size_t  used;            /* Number of bytes cached. */
+    uint8_t       *data;            /* First byte of SIZE bytes of memory. */
+    hash_entry_t  *ht_entries;      /* Memory used for HT entries. */
+    atomic_size_t  n_ht_entries;    /* Current number of HT entries. */
+    hash_entry_t  *ht;              /* Hash table, maps filename to data. */
 
     /* Statistics. */
     atomic_size_t n_accs;
