@@ -104,7 +104,7 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
     /* Create the mmap for the shm object. */
     e->ptr = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, e->shm_fd, 0);
     if (e->ptr == NULL) {
-        shm_unlink(e->shm_fd);
+        shm_unlink(e->path);
         close(e->shm_fd);
         return -ENOMEM;
     }
@@ -144,8 +144,8 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
        corrupted, as this memory has already been allocated elsewhere, and given
        it's shared, there should be no real impact to system memory utilization
        from this call. */
-    uint8_t *data = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, fd, 0);
-    assert(data != NULL);
+    uint8_t *ptr = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, fd, 0);
+    assert(ptr != NULL);
 
     /* Copy the data into the user's DATA buffer, but don't overflow it. */
     *size = e->size;
@@ -153,11 +153,11 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
         pthread_spin_unlock(&e->lock);
         return -EINVAL;
     }
-    memcpy(data, e->ptr, e->size);
+    memcpy(data, ptr, e->size);
 
     /* Close our references to the file data. */
     close(fd);
-    munmap(data, e->size);
+    munmap(ptr, e->size);
     pthread_spin_unlock(&e->lock);
 
     return 0;
@@ -290,7 +290,7 @@ cache_init(cache_t *cache,
 
     /* Synchronization initialization. */
     assert(!pthread_spin_init(&cache->ht_lock, PTHREAD_PROCESS_SHARED));
-    for (size_t i = 0; i < cache->ht_entries; i++) {
+    for (size_t i = 0; i < cache->n_ht_entries; i++) {
         assert(!pthread_spin_init(&cache->ht_entries[i].lock,
                                   PTHREAD_PROCESS_SHARED));
     }
