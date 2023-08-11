@@ -31,8 +31,7 @@ This module adds a new class, `minio.PyCache`, initialized with parameters `size
 
 ### `PyCache.contains(filepath: str)`
 
-Returns `True` if `filepath` has an entry in the cache, otherwise returns
-`False`.
+Returns `True` if `filepath` has an entry in the cache, otherwise returns `False`.
 
 ### `PyCache.store(filepath: str, bytes: int, data: bytearray)`
 
@@ -40,14 +39,11 @@ Stores `bytes` bytes of data from `data` in the cache, indexed by `filepath`.
 
 ### `PyCache.load(filepath: str)`
 
-Load the data at `filepath` from the cache, returning a tuple `(data, size)`,
-where `data` is the bytes read, and `size` is the number of bytes. On miss, does
-not issue any IO, instead returning `None`.
+Load the data at `filepath` from the cache, returning a tuple `(data, size)`, where `data` is the bytes read, and `size` is the number of bytes. On miss, does not issue any IO, instead returning `None`.
 
 ### `PyCache.read_file(filepath: str)`
 
-Reads the file at `filepath` through the cache, returning a tuple `(data, size)`,
-where `data` is the bytes read, and `size` is the number of bytes.
+Reads the file at `filepath` through the cache, returning a tuple `(data, size)`, where `data` is the bytes read, and `size` is the number of bytes.
 
 ### `PyCache.flush()`
 
