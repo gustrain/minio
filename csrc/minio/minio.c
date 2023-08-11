@@ -87,18 +87,28 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
     }
 
     /* Copy the path into the entry. */
-    strncpy(e->path, path, MAX_PATH_LENGTH);
+    strncpy(e->path, path, MAX_PATH_LEN);
+
+    /* Prepare the filepath according to shm requirements. */
+    e->shm_path[0] = '/';
+    for (int i = 0; i < MAX_PATH_LEN + 1; i++) {
+        /* Replace all occurences of '/' with '_'. */
+        e->shm_path[i + 1] = e->path[i] == '/' ? '_' : e->path[i];
+        if (e->path[i] == '\0') {
+            break;
+        }
+    }
 
     /* Allocate an shm object for this entry's data. */
-    e->shm_fd = shm_open(e->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    e->shm_fd = shm_open(e->shm_path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     if (e->shm_fd < 0) {
-        fprintf(stderr, "failed to shm_open %s\n", e->path);
+        fprintf(stderr, "failed to shm_open %s ; %s\n", e->path, e->shm_path);
         return -errno;
     }
 
     /* Appropriately size the shm object. */
     if (ftruncate(e->shm_fd, e->size) < 0) {
-        shm_unlink(e->path);
+        shm_unlink(e->shm_path);
         close(e->shm_fd);
         return -errno;
     }
@@ -106,7 +116,7 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
     /* Create the mmap for the shm object. */
     e->ptr = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, e->shm_fd, 0);
     if (e->ptr == NULL) {
-        shm_unlink(e->path);
+        shm_unlink(e->shm_path);
         close(e->shm_fd);
         return -ENOMEM;
     }
@@ -139,7 +149,7 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
     /* Open the shm object containing the file data. Because there was a hit in
        the hashtable, an shm object with PATH must exist, and thus if this call
        fails, something is deeply broken/corrupted. */
-    int fd = shm_open(e->path, O_RDWR, S_IRUSR | S_IWUSR);
+    int fd = shm_open(e->shm_path, O_RDWR, S_IRUSR | S_IWUSR);
     assert(fd >= 0);
 
     /* This call should also not fail unless something is deeply broken or

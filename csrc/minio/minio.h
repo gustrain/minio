@@ -32,7 +32,7 @@
 #include <pthread.h>
 #include <sys/mman.h>
 
-#define MAX_PATH_LENGTH 128
+#define MAX_PATH_LEN 128
 
 /* Cache replacement policy. */
 typedef enum {
@@ -44,13 +44,15 @@ typedef enum {
 /* Hash table entry. Maps filepath to cached data. An entry must be in the hash
    table IFF the corresponding file is cached. */
 typedef struct {
-    char    path[MAX_PATH_LENGTH + 1];  /* Key. Filepath of file. */
-    void   *ptr;                        /* Pointer to this file's data. */
-    size_t  size;                       /* Size of file data in bytes. */
-    int     shm_fd;                     /* File descriptor for SHM object. */
+    char    path[MAX_PATH_LEN + 1];      /* Key. Filepath of file. */
+    char    shm_path[MAX_PATH_LEN + 2];  /* PATH but with '/' replaced with
+                                               '_' to name the shm object. */
+    void   *ptr;                            /* Pointer to this file's data. */
+    size_t  size;                           /* Size of file data in bytes. */
+    int     shm_fd;                         /* File descriptor for SHM object. */
 
     /* Synchronization. */
-    pthread_spinlock_t lock;            /* Protects entry from eviction. */
+    pthread_spinlock_t lock;                /* Protects entry from eviction. */
 
     UT_hash_handle hh;
 } hash_entry_t;
