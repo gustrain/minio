@@ -70,12 +70,12 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
     if (n >= cache->max_ht_entries) {
         return -ENOMEM;
     }
-    hash_entry_t *entry = &cache->ht_entries[n];
+    hash_entry_t *e = &cache->ht_entries[n];
 
     /* Figure out where the data goes. */
-    entry->size = size;
+    e->size = size;
     size_t used = atomic_fetch_add(&cache->used, size);
-    entry->ptr = cache->data + used;
+    e->ptr = cache->data + used;
 
     /* Check that this data is being placed in-range before continuing. If we're
         out-of-range, undo the expansion and abort. */
@@ -85,21 +85,36 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
     }
 
     /* Copy the path into the entry. */
-    strncpy(entry->path, path, MAX_PATH_LENGTH);
+    strncpy(e->path, path, MAX_PATH_LENGTH);
 
-    /* Allocate SIZE bytes for this entry's data. */
-    entry->shm_fd = shm_open(entry->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    if (entry->shm_fd < 0) {
-        fprintf(stderr, "failed to shm_open %s\n", entry->path);
+    /* Allocate an shm object for this entry's data. */
+    e->shm_fd = shm_open(e->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (e->shm_fd < 0) {
+        fprintf(stderr, "failed to shm_open %s\n", e->path);
         return -errno;
     }
 
+    /* Appropriately size the shm object. */
+    if (ftruncate(e->shm_fd, e->size) < 0) {
+        shm_unlink(e->path);
+        close(e->shm_fd);
+        return -errno;
+    }
+
+    /* Create the mmap for the shm object. */
+    e->ptr = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, e->shm_fd, 0);
+    if (e->ptr == NULL) {
+        shm_unlink(e->shm_fd);
+        close(e->shm_fd);
+        return -ENOMEM;
+    }
+
     /* Copy data to the cache. */
-    memcpy(entry->ptr, data, size);
+    memcpy(e->ptr, data, size);
 
     /* Insert into hash table. */
     pthread_spin_lock(&cache->ht_lock);
-    HASH_ADD_STR(cache->ht, path, entry);
+    HASH_ADD_STR(cache->ht, path, e);
     pthread_spin_unlock(&cache->ht_lock);
 
     return 0;
@@ -112,18 +127,38 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
 int
 cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
 {
-    hash_entry_t *entry = NULL;
-    HASH_FIND_STR(cache->ht, path, entry);
-    if (entry == NULL) {
+    hash_entry_t *e = NULL;
+    HASH_FIND_STR(cache->ht, path, e);
+    if (e == NULL) {
         return -ENODATA;
     }
+    pthread_spin_lock(&e->lock);
 
-    /* Don't overflow the buffer. */
-    *size = entry->size;
-    if (entry->size > max) {
+    /* Open the shm object containing the file data. Because there was a hit in
+       the hashtable, an shm object with PATH must exist, and thus if this call
+       fails, something is deeply broken/corrupted. */
+    int fd = shm_open(e->path, O_RDWR, S_IRUSR | S_IWUSR);
+    assert(fd >= 0);
+
+    /* This call should also not fail unless something is deeply broken or
+       corrupted, as this memory has already been allocated elsewhere, and given
+       it's shared, there should be no real impact to system memory utilization
+       from this call. */
+    uint8_t *data = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, fd, 0);
+    assert(data != NULL);
+
+    /* Copy the data into the user's DATA buffer, but don't overflow it. */
+    *size = e->size;
+    if (e->size > max) {
+        pthread_spin_unlock(&e->lock);
         return -EINVAL;
     }
-    memcpy(data, entry->ptr, entry->size);
+    memcpy(data, e->ptr, e->size);
+
+    /* Close our references to the file data. */
+    close(fd);
+    munmap(data, e->size);
+    pthread_spin_unlock(&e->lock);
 
     return 0;
 }
@@ -254,7 +289,11 @@ cache_init(cache_t *cache,
     memset(cache->ht_entries, 0, cache->ht_size);
 
     /* Synchronization initialization. */
-    pthread_spin_init(&cache->ht_lock, PTHREAD_PROCESS_SHARED);
+    assert(!pthread_spin_init(&cache->ht_lock, PTHREAD_PROCESS_SHARED));
+    for (size_t i = 0; i < cache->ht_entries; i++) {
+        assert(!pthread_spin_init(&cache->ht_entries[i].lock,
+                                  PTHREAD_PROCESS_SHARED));
+    }
 
     /* Get log2 of the number of entries. */
     int max_ht_entries_copy = cache->max_ht_entries;

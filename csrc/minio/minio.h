@@ -49,6 +49,9 @@ typedef struct {
     size_t  size;                       /* Size of file data in bytes. */
     int     shm_fd;                     /* File descriptor for SHM object. */
 
+    /* Synchronization. */
+    pthread_spinlock_t lock;            /* Protects entry from eviction. */
+
     UT_hash_handle hh;
 } hash_entry_t;
 
