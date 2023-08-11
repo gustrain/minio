@@ -37,6 +37,8 @@
 #include <unistd.h>
 #include <stdatomic.h>
 #include <pthread.h>
+#include <sys/shm.h>
+#include <sys/mman.h>
 
 #include "../include/uthash.h"
 
