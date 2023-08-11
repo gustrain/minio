@@ -125,6 +125,9 @@ cache_store(cache_t *c, char *path, uint8_t *data, size_t size)
         return -ENOMEM;
     }
 
+    /* Page-lock the memory. */
+    mlock(entry->ptr, entry->size);
+
     /* Copy data to the cache. */
     memcpy(entry->ptr, data, size);
 
