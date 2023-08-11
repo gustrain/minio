@@ -34,7 +34,6 @@
 /* Python wrapper for cache_t type. */
 typedef struct {
     PyObject_HEAD
-
     cache_t *cache;                     /* MinIO cache. */
     size_t   max_usable_file_size;      /* Max file size we can read. */
     size_t   max_cacheable_file_size;   /* Max file size we can cache. Defaults
@@ -54,16 +53,19 @@ PyCache_dealloc(PyObject *self)
 
     /* Only free memory in the cache struct if it's actually been allocated. */
     if (cache->cache != NULL) {
-        /* Free the shared memory allocated for the cache region. */
-        if (cache->cache->data != NULL) {
-            munmap(cache->cache->data, cache->cache->size);
-        }
-
         /* Free the memory allocated for the hash table. */
         if (cache->cache->ht_entries != NULL) {
             munmap(cache->cache->ht_entries,
                    sizeof(hash_entry_t) * (cache->cache->max_ht_entries + 1));
         }
+
+        /* Free the memory allocated for spinlocks. */
+        if (cache->cache->entry_locks != NULL) {
+            munmap(cache->cache->entry_locks,
+                   sizeof(pthread_spinlock_t) * cache->cache->n_entry_locks);
+        }
+
+        /* Free each active entry's shm object. (TODO). */
         
         /* Free the shared memory allocated for the cache struct. */
         munmap(cache->cache, sizeof(cache_t));

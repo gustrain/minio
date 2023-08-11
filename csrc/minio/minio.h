@@ -44,12 +44,14 @@ typedef enum {
 /* Hash table entry. Maps filepath to cached data. An entry must be in the hash
    table IFF the corresponding file is cached. */
 typedef struct {
-    char    path[MAX_PATH_LEN + 1];      /* Key. Filepath of file. */
-    char    shm_path[MAX_PATH_LEN + 2];  /* PATH but with '/' replaced with
+    char      path[MAX_PATH_LEN + 1];       /* Key. Filepath of file. */
+    char      shm_path[MAX_PATH_LEN + 2];   /* PATH but with '/' replaced with
                                                '_' to name the shm object. */
-    void   *ptr;                            /* Pointer to this file's data. */
-    size_t  size;                           /* Size of file data in bytes. */
-    int     shm_fd;                         /* File descriptor for SHM object. */
+    void     *ptr;                          /* Pointer to this file's data. */
+    size_t    size;                         /* Size of file data in bytes. */
+    int       shm_fd;                       /* SHM object file descriptor. */
+    uint64_t  lock_id;                      /* ID of lock in ENTRY_LOCKS array
+                                               for this entry's protection. */
 
     UT_hash_handle hh;
 } hash_entry_t;
@@ -80,7 +82,12 @@ typedef struct {
     atomic_size_t n_fail;
 
     /* Synchronization. */
-    pthread_spinlock_t ht_lock;
+    pthread_spinlock_t  ht_lock;        /* Protects hash table. */
+    pthread_spinlock_t *entry_locks;    /* Protects hash table entries. Indexed
+                                           using a hash function to provide fair
+                                           coverage. Size of the array decides
+                                           maximum parallelism. */
+    size_t              n_entry_locks;  /* Number of locks in ENTRY_LOCKS. */
 } cache_t;
 
 bool cache_contains(cache_t *cache, char *path);

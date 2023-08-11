@@ -43,16 +43,18 @@
 #include "../include/uthash.h"
 
 #define AVERAGE_FILE_SIZE (100 * 1024)
+#define ENTRIES_PER_LOCK (16)
+#define MIN_LOCKS (8)
 
 #define STAT_INC(cache, field) atomic_fetch_add(&cache->field, 1)
 
 
 /* Check if CACHE contains PATH. Returns true if cached, else false. */
 bool
-cache_contains(cache_t *cache, char *path)
+cache_contains(cache_t *c, char *path)
 {
     hash_entry_t *entry = NULL;
-    HASH_FIND_STR(cache->ht, path, entry);
+    HASH_FIND_STR(c->ht, path, entry);
 
     return (entry != NULL);
 }
@@ -60,74 +62,74 @@ cache_contains(cache_t *cache, char *path)
 /* Store DATA into CACHE indexed by PATH. On success, returns 0. On failure,
     returns negative errno value. */
 int
-cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
+cache_store(cache_t *c, char *path, uint8_t *data, size_t size)
 {
     /* Check size constraint. */
-    if (size > cache->max_item_size) {
+    if (size > c->max_item_size) {
         return -E2BIG;
     }
 
     /* Acquire an entry. */
-    size_t n = atomic_fetch_add(&cache->n_ht_entries, 1);
-    if (n >= cache->max_ht_entries) {
+    size_t n = atomic_fetch_add(&c->n_ht_entries, 1);
+    if (n >= c->max_ht_entries) {
         return -ENOMEM;
     }
-    hash_entry_t *e = &cache->ht_entries[n];
+    hash_entry_t *entry = &c->ht_entries[n];
 
     /* Figure out where the data goes. */
-    e->size = size;
-    size_t used = atomic_fetch_add(&cache->used, size);
-    e->ptr = cache->data + used;
+    entry->size = size;
+    size_t used = atomic_fetch_add(&c->used, size);
+    entry->ptr = c->data + used;
 
     /* Check that this data is being placed in-range before continuing. If we're
         out-of-range, undo the expansion and abort. */
-    if (used + size > cache->size) {
-        atomic_fetch_sub(&cache->used, size);
+    if (used + size > c->size) {
+        atomic_fetch_sub(&c->used, size);
         return -ENOMEM;
     }
 
     /* Copy the path into the entry. */
-    strncpy(e->path, path, MAX_PATH_LEN);
+    strncpy(entry->path, path, MAX_PATH_LEN);
 
     /* Prepare the filepath according to shm requirements. */
-    e->shm_path[0] = '/';
+    entry->shm_path[0] = '/';
     for (int i = 0; i < MAX_PATH_LEN + 1; i++) {
         /* Replace all occurences of '/' with '_'. */
-        e->shm_path[i + 1] = e->path[i] == '/' ? '_' : e->path[i];
-        if (e->path[i] == '\0') {
+        entry->shm_path[i + 1] = entry->path[i] == '/' ? '_' : entry->path[i];
+        if (entry->path[i] == '\0') {
             break;
         }
     }
 
     /* Allocate an shm object for this entry's data. */
-    e->shm_fd = shm_open(e->shm_path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    if (e->shm_fd < 0) {
-        fprintf(stderr, "failed to shm_open %s ; %s\n", e->path, e->shm_path);
+    entry->shm_fd = shm_open(entry->shm_path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (entry->shm_fd < 0) {
+        fprintf(stderr, "failed to shm_open %s\n", entry->path);
         return -errno;
     }
 
     /* Appropriately size the shm object. */
-    if (ftruncate(e->shm_fd, e->size) < 0) {
-        shm_unlink(e->shm_path);
-        close(e->shm_fd);
+    if (ftruncate(entry->shm_fd, entry->size) < 0) {
+        shm_unlink(entry->shm_path);
+        close(entry->shm_fd);
         return -errno;
     }
 
     /* Create the mmap for the shm object. */
-    e->ptr = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, e->shm_fd, 0);
-    if (e->ptr == NULL) {
-        shm_unlink(e->shm_path);
-        close(e->shm_fd);
+    entry->ptr = mmap(NULL, entry->size, PROT_WRITE, MAP_SHARED, entry->shm_fd, 0);
+    if (entry->ptr == NULL) {
+        shm_unlink(entry->shm_path);
+        close(entry->shm_fd);
         return -ENOMEM;
     }
 
     /* Copy data to the cache. */
-    memcpy(e->ptr, data, size);
+    memcpy(entry->ptr, data, size);
 
     /* Insert into hash table. */
-    pthread_spin_lock(&cache->ht_lock);
-    HASH_ADD_STR(cache->ht, path, e);
-    pthread_spin_unlock(&cache->ht_lock);
+    pthread_spin_lock(&c->ht_lock);
+    HASH_ADD_STR(c->ht, path, entry);
+    pthread_spin_unlock(&c->ht_lock);
 
     return 0;
 }
@@ -137,37 +139,42 @@ cache_store(cache_t *cache, char *path, uint8_t *data, size_t size)
     (-ENODATA is returned without any IO being issued). On success returns 0.
     On failure returns negative errno. */
 int
-cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
+cache_load(cache_t *c, char *path, uint8_t *data, size_t *size, size_t max)
 {
-    hash_entry_t *e = NULL;
-    HASH_FIND_STR(cache->ht, path, e);
-    if (e == NULL) {
+    hash_entry_t *entry = NULL;
+    HASH_FIND_STR(c->ht, path, entry);
+    if (entry == NULL) {
         return -ENODATA;
     }
+
+    pthread_spinlock_t *lock = &c->entry_locks[entry->lock_id];
+    pthread_spin_lock(lock);
 
     /* Open the shm object containing the file data. Because there was a hit in
        the hashtable, an shm object with PATH must exist, and thus if this call
        fails, something is deeply broken/corrupted. */
-    int fd = shm_open(e->shm_path, O_RDWR, S_IRUSR | S_IWUSR);
+    int fd = shm_open(entry->shm_path, O_RDWR, S_IRUSR | S_IWUSR);
     assert(fd >= 0);
 
     /* This call should also not fail unless something is deeply broken or
        corrupted, as this memory has already been allocated elsewhere, and given
        it's shared, there should be no real impact to system memory utilization
        from this call. */
-    uint8_t *ptr = mmap(NULL, e->size, PROT_WRITE, MAP_SHARED, fd, 0);
+    uint8_t *ptr = mmap(NULL, entry->size, PROT_WRITE, MAP_SHARED, fd, 0);
     assert(ptr != NULL);
 
     /* Copy the data into the user's DATA buffer, but don't overflow it. */
-    *size = e->size;
-    if (e->size > max) {
+    *size = entry->size;
+    if (entry->size > max) {
+        pthread_spin_unlock(lock);
         return -EINVAL;
     }
-    memcpy(data, ptr, e->size);
+    memcpy(data, ptr, entry->size);
 
     /* Close our references to the file data. */
     close(fd);
-    munmap(ptr, e->size);
+    munmap(ptr, entry->size);
+    pthread_spin_unlock(lock);
 
     return 0;
 }
@@ -186,30 +193,30 @@ cache_load(cache_t *cache, char *path, uint8_t *data, size_t *size, size_t max)
     It should be noted that the cache is only thread/process safe so long as the
     cache entries are only written once (as is the case with MinIO). */
 ssize_t
-cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
+cache_read(cache_t *c, char *path, void *data, uint64_t max_size)
 {
-    size_t n_accs = STAT_INC(cache, n_accs);
+    size_t n_accs = STAT_INC(c, n_accs);
     if (n_accs % 2500 == 0) {
-        DEBUG_LOG("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", cache->n_accs, cache->n_hits, cache->n_miss_cold, cache->n_miss_capacity, cache->n_fail, cache->used / (1024 * 1024), cache->size / (1024 * 1024), cache->data, &cache->used, getpid(), getppid());
+        DEBUG_LOG("[MinIO debug] accesses = %lu, hits = %lu, cold misses = %lu, capacity misses = %lu, fails = %lu (usage = %lu/%lu MB) (cache->data = %p) (&cache->used = %p) (pid = %d, ppid = %d)\n", c->n_accs, c->n_hits, c->n_miss_cold, c->n_miss_capacity, c->n_fail, c->used / (1024 * 1024), c->size / (1024 * 1024), c->data, &c->used, getpid(), getppid());
     }
 
     /* Check if the file is cached. */
     size_t bytes = 0;
-    int status = cache_load(cache, path, data, &bytes, max_size);
+    int status = cache_load(c, path, data, &bytes, max_size);
     if (status < 0) {
         /* Don't fail if the error was the file not being cached. */
         if (status != -ENODATA) {
             return (ssize_t) status;
         }
     } else {
-        STAT_INC(cache, n_hits);
+        STAT_INC(c, n_hits);
         return (ssize_t) bytes;
     }
 
     /* Open the file in DIRECT mode. */
     int fd = open(path, O_RDONLY | __O_DIRECT);
     if (fd < 0) {
-        STAT_INC(cache, n_fail);
+        STAT_INC(c, n_fail);
         return -ENOENT;
     }
 
@@ -217,7 +224,7 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
     size_t size = lseek(fd, 0L, SEEK_END);
     if (size > max_size || size == 0) {
         close(fd);
-        STAT_INC(cache, n_fail);
+        STAT_INC(c, n_fail);
         return -EINVAL;
     }
     lseek(fd, 0L, SEEK_SET);
@@ -233,10 +240,10 @@ cache_read(cache_t *cache, char *path, void *data, uint64_t max_size)
     close(fd);
 
     /* Cache the data. If this call fails, the data didn't fit. */
-    if (cache_store(cache, path, data, size) < 0) {
-        STAT_INC(cache, n_miss_capacity);
+    if (cache_store(c, path, data, size) < 0) {
+        STAT_INC(c, n_miss_capacity);
     } else {
-        STAT_INC(cache, n_miss_cold);
+        STAT_INC(c, n_miss_cold);
     }
 
     return size;
@@ -262,49 +269,57 @@ cache_flush(cache_t *cache)
 /* Initialize a cache CACHE with SIZE bytes and POLICY replacement policy. On
     success, 0 is returned. On failure, negative errno value is returned. */
 int
-cache_init(cache_t *cache,
-              size_t size,
-              size_t max_item_size,
-              size_t avg_item_size,
-              policy_t policy)
+cache_init(cache_t *c,
+           size_t size,
+           size_t max_item_size,
+           size_t avg_item_size,
+           policy_t policy)
 {
     /* Cache configuration. */
-    cache->size = size;
-    cache->used = 0;
-    cache->policy = policy;
-    cache->max_item_size = max_item_size;
+    c->size = size;
+    c->used = 0;
+    c->policy = policy;
+    c->max_item_size = max_item_size;
 
     /* Zero initial stats. */
-    cache->n_accs = 0;
-    cache->n_fail = 0;
-    cache->n_hits = 0;
-    cache->n_miss_capacity = 0;
-    cache->n_miss_cold = 0;
+    c->n_accs = 0;
+    c->n_fail = 0;
+    c->n_hits = 0;
+    c->n_miss_capacity = 0;
+    c->n_miss_cold = 0;
 
     /* Initialize the hash table. Allocate more entries than we'll likely need,
         since file size may vary, and entries are relatively small. */
-    cache->n_ht_entries = 0;
+    c->n_ht_entries = 0;
     if (avg_item_size != 0) {
-        cache->max_ht_entries = (2 * size) / avg_item_size;
+        c->max_ht_entries = (2 * size) / avg_item_size;
     } else {
-        cache->max_ht_entries = (2 * size) / AVERAGE_FILE_SIZE;
+        c->max_ht_entries = (2 * size) / AVERAGE_FILE_SIZE;
     }
-    assert(cache->max_ht_entries > 0);
-    cache->ht_size = (cache->max_ht_entries + 1) * sizeof(hash_entry_t);
-    if ((cache->ht_entries = mmap_alloc(cache->ht_size)) == NULL) {
+    assert(c->max_ht_entries > 0);
+    c->ht_size = (c->max_ht_entries + 1) * sizeof(hash_entry_t);
+    if ((c->ht_entries = mmap_alloc(c->ht_size)) == NULL) {
         return -ENOMEM;
     }
-    cache->ht = &cache->ht_entries[cache->max_ht_entries];
-    memset(cache->ht_entries, 0, cache->ht_size);
+    c->ht = &c->ht_entries[c->max_ht_entries];
+    memset(c->ht_entries, 0, c->ht_size);
 
     /* Synchronization initialization. */
-    assert(!pthread_spin_init(&cache->ht_lock, PTHREAD_PROCESS_SHARED));
+    assert(!pthread_spin_init(&c->ht_lock, PTHREAD_PROCESS_SHARED));
+    c->n_entry_locks = MAX(MIN_LOCKS, c->max_ht_entries / ENTRIES_PER_LOCK);
+    c->entry_locks = mmap_alloc(c->n_entry_locks * sizeof(pthread_spinlock_t));
+    for (size_t i = 0; i < c->n_entry_locks; i++) {
+        assert(!pthread_spin_init(&c->entry_locks[i], PTHREAD_PROCESS_SHARED));
+    }
+    for (size_t i = 0; i < c->max_ht_entries; i++) {
+        c->ht_entries[i].lock_id = utils_hash(i) % c->n_entry_locks;
+    }
 
     /* Get log2 of the number of entries. */
-    int max_ht_entries_copy = cache->max_ht_entries;
+    int max_ht_entries_copy = c->max_ht_entries;
     int max_ht_entries_log2 = 0;
     while (max_ht_entries_copy >>= 1) max_ht_entries_log2++;
-    HASH_MAKE_TABLE(hh, cache->ht, 0, cache->max_ht_entries, max_ht_entries_log2);
+    HASH_MAKE_TABLE(hh, c->ht, 0, c->max_ht_entries, max_ht_entries_log2);
 
     /* We don't allocate the memory used to cache actual data yet. This memory
         will be allocated on-demand using SHM objects named with the entry's key
