@@ -147,6 +147,7 @@ cache_load(cache_t *c, char *path, uint8_t *data, size_t *size, size_t max)
     pthread_spin_lock(&c->ht_lock);
     HASH_FIND_STR(c->ht, path, entry);
     if (entry == NULL) {
+        pthread_spin_unlock(&c->ht_lock);
         return -ENODATA;
     }
 
