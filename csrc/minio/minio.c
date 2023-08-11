@@ -361,6 +361,6 @@ cache_destroy(cache_t *c)
 
     /* Free the spinlocks. */
     if (c->entry_locks != NULL) {
-        munmap(c->entry_locks, sizeof(pthread_spinlock_t) * c->n_entry_locks);
+        munmap((void *) c->entry_locks, sizeof(pthread_spinlock_t) * c->n_entry_locks);
     }
 }
